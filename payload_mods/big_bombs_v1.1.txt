@@ -34,4 +34,40 @@
 80334040:   b ->    0x800DB4A8
 80334044:   b ->    0x8033402C          
 
+#############################################################################
+# Make bombs huge with giant explosion radius
+#############################################################################
+
+# Put injection hook in daPy_lk_c::makeItemType
+8010CA18:   b ->    0x80334000
+
+# Put injection hook in daBomb_c::procExplode_init
+800DB4A4:   b ->    0x80334018
+
+#############################################################################
+# Set Bomb Actor Scale only when created by Link
+
+80334000:   lis     r21, 0x41A0         ## 41A00000 Scale of 20
+80334004:   stw     r21, 0x214(r4)      # X
+80334008:   stw     r21, 0x218(r4)      # Y
+8033400C:   stw     r21, 0x21C(r4)      # Z
+
+80334010:   lwz     r0, 0x3190(r31)
+80334014:   b ->    0x8010CA1C
+
+#############################################################################
+# Check Actor Scale ; Set Explosion Radius
+80334018:   cmpwi   r30, 0              #r30 Bomb Heap if created by Link
+8033401C:   beq ->  0x80334044
+80334020:   lhz     r21, 0x214(r30)
+80334024:   cmpwi   r21, 0x41A0         # Check Scale X is 20
+80334028:   beq ->  0x80334034
+8033402C:   lfs     f1, -0x64D0(r2)
+80334030:   b ->    0x800DB4A8
+80334034:   lis     r21, 0x8033
+80334038:   ori     r21, r21, 0x4048
+8033403C:   lfs     f1, 0(r21)          # Load Explosion Radius
+80334040:   b ->    0x800DB4A8
+80334044:   b ->    0x8033402C          
+
 80334048:   6700    # explosion radius scale
