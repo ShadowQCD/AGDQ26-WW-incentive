@@ -1,6 +1,0 @@
-#############################################################################
-# Make bombs huge with giant explosion radius
-#############################################################################
-800DD0B4:   nop     # remove branch in create_init so bomb actor scale is always set
-803F9830:   67      # set explosion radius scale
-803F97A0:   41A0    # set bomb actor scale data
