@@ -2,8 +2,9 @@
 # Activate Map Select when holding Y in loading zone
 #############################################################################
 
-# Put injection hook in f_pc_profile::fpcPf_Get (replaces 'blr')
-8004004C:   b   ->  0x80330EE4
+# Put injection hook in d_com_inf_game::dComIfGp_setNextStage
+80053884:   b -> 0x80330EE4             # replaces addi sp, sp, 32
+
 
 # Load the 16-bit controller input from 0x803ED84A
 80330EE4:   lis     r14, 0x803F         # r14 = 0x803ED84A
@@ -33,8 +34,9 @@
 ########################################################################################
 # Perform write (if Y or Start is pressed)
 80330F18:   lis     r19, 0x80AE
-80330F1C:   stw     r18, -0x2CCC(r19)     # r19 = 0x80ADD334
+80330F1C:   stw     r18, -0x2CCC(r19)   # r19 = 0x80ADD334
 
 ########################################################################################
 # Return to normal code
-80330F20:   blr
+80330F20:   addi r1, r1, 32
+80330F24:   b -> 0x80053888

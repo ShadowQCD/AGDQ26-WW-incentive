@@ -2,3 +2,4 @@ __pycache__/
 .ipynb_checkpoints/
 scratch/
 .venv/
+model_files/
