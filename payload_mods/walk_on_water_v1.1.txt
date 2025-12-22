@@ -1,0 +1,84 @@
+########################################################################################
+# Walk on water when wearing water boots
+########################################################################################
+
+########################################################################################
+# Create a "wearing water boots" flag
+
+# Put injection hook in daPy_lk_c::procBootsEquip_init 
+801198DC:   b -> 0x80331200        # replaces blr
+
+# Check if the equipped boots are water boots
+80331200:   nop #cmpwi r30, 0x2B
+80331204:   nop #bne -> 0x80331218
+
+# If so, toggle the flag (defined below)
+80331208:   lis r14, 0x8033
+8033120C:   lbz r15, 0x121F (r14)
+80331210:   xori r15, r15, 1        # toggle the flag between 0 and 1
+80331214:   stb r15, 0x121F (r14)
+
+# Resume normal code
+80331218:   blr
+
+########################################################################################
+# "Wearing water boots" flag (1 when worn, 0 otherwise)
+8033121C:   00000000
+########################################################################################
+
+########################################################################################
+# "Walk on water" logic
+########################################################################################
+
+# Put injection hook in dBgS_Acch::GroundCheck 
+800A2F7C:   b -> 0x80331220
+
+# Check if wearing water boots
+80331220:   lis r14, 0x8033
+80331224:   lbz r14, 0x121F (r14)
+80331228:   cmpwi r14, 1
+8033122C:   bne -> 0x8033124C
+
+# Check if on water
+80331230:   cmpwi r7, 3             # check if surface type == 3 (water)
+80331234:   lfs f0, -0x60 (r30)     # load the per-actor override ground height
+80331238:   bne -> 0x8033124C       # if r7==3 jump to the water-handling branch
+
+# Water-handling branch
+8033123C:   fcmpo cr0, f22, f21     # compare f22 vs f21 (test the "sentinel" state, defined below)
+80331240:   lfs f22, -0x5C (r30)    # load per-actor nearby float (may be sentinel)
+80331244:   beq -> 0x8033124C       # if f22==f21 go back to default path (don’t override)
+80331248:   b -> 0x800A2F84         # else return to a different continuation (using the override)
+
+# Normal collision branch
+8033124C:   lfs f0, 0x008C (r31)    # default path: load normal ground sample
+80331250:   b -> 0x800A2F80         # return to original GroundCheck continuation
+
+########################################################################################
+# Put injection hook in daPy_lk_c::changeSwimProc
+8013D020:   b -> 0x80331258         # from daPy_lk_c::changeSwimProc
+
+# Constant "sentinel" float value (stored in tmp bits, may relocate)
+803C5E44:   04071987                # tiny positive float, used below
+
+# Check if wearing water boots
+80331258:   lis r14, 0x8033
+8033125C:   lbz r14, 0x121F (r14)
+80331260:   cmpwi r14, 1
+80331264:   bne -> 0x80331288
+
+# Manage height (idk what r30 is, should learn to polish collision)
+80331268:   cmplwi r30, 0x5787
+8033126C:   ble -> 0x80331288       # skip override for some r30 values (a guard)
+
+80331270:   fcmpo cr0, f1, f0       # compare actor height (f1) vs water (f0)
+80331274:   bge -> 0x80331280       # if actor >= water -> go to sentinel branch
+
+80331278:   stfs f21, -0x60 (r30)   # store f21 into -0x60 (override ground height)
+8033127C:   b -> 0x80331288
+
+80331280:   lfs f22, -0x64 (r30)    # load "sentinel" float value (defined below)
+80331284:   stfs f1, -0x60 (r30)    # store f1 into -0x60 (alternate override)
+
+80331288:   fsubs f1, f1, f0        # continue original swim logic
+8033128C:   b -> 0x8013D024         # return to original function flow

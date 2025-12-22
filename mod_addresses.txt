@@ -1,13 +1,14 @@
-Unused TRK memory: 80330EE4 - 80338680(?) [region size = 0x779C = 30,620 bytes ~ 30 kB]
+Unused TRK memory: 80330EE4 - 80337BB0(?) [region size = 0x6CCC = 27,852 bytes ~ 28 kB]
+----------------------------------------------------------------------------------------
 
-walk_on_water_v0:       80004010 - 80004034 (0x24)
-                        80004048 - 80004070 (0x28)
-                        803C5E44 - 803C5E48 (0x04)
+map_select_v1.0:            80330EE4 - 80330F28 (0x44)
+remap_chest_items_v1.1:     80330F48 - 80330F70 (0x28)
+water_boots_chest_v1.0:     80330F90 - 80330FD0 (0x40)
+remap_loading_zones_v1.2:   80331000 - 8033119C (0x19C)
+walk_on_water_v1.1:         80331200 - 80331290 (0x90)
+hboots_manager_v1.0:        803312C0 - 80331300 (0x40)
+SpawnGShip_v1.3:            80331350 - 80331470 (0x120)
+SwordDamageZero_v1.0:       803314A0 - 803314FC (0x5C)
+big_bombs_v1.3:             80331520 - 80331594 (0x74)
 
-map_select:             80330EE4 - 80330F28 (0x34)
-remap_chest_items:      80330F74 - 80330FAC (0x34)
-remap_loading_zones_v1: 80331000 - 80331188 (0x188)
-item_func_water_boots:  80331500 - 80331510 (0x10)
-walk_on_water_v1:       80331550 - 803315E0 (0x90)
-
-SpawnGShip:             80333000 - 80333094 (0x94)
+hboots_Toad.bdl:            80332000 - 803373A0 (0x53A0) # can try allocating in a different heap if space becomes an issue

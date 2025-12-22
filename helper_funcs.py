@@ -1,4 +1,5 @@
 from keystone import Ks, KsError, KS_ARCH_PPC, KS_MODE_PPC64
+import re
 
 #######################################################################################
 # Register dictionary at start of ACE payload
@@ -18,7 +19,7 @@ def ACE_rdict(r3 = 0x81579F34, r12 = 0x803F0F3C, r29 = 0x80A60850):
         11: 0x8040CE30,
         12: r12,        # payload start address
         13: 0x803FE0E0, # &sScreen = r13 - 0x6F38 = 0x803F71A8 (DO NOT CHANGE)
-        # 14-27: 0x0,   # good registers for 
+        # 14-27: 0x0,   # fine to edit
         28: 0x8003D1DC,
         29: r29,        # PROC_MSG start address; island/heap dependent
         30: 0x804C3B30, # used by safety branch (DO NOT CHANGE)
@@ -497,6 +498,134 @@ def phase2_bin_to_csv(binfile, csvfile):
         #f_outwrite(f"0x803F0F4C, 0x4BE24718")  # branch to safety ('phase 3')
         
 
+#######################################################################################
+# Dump from file (e.g. for water boots .arc)
+#######################################################################################
+def dump_bytes_PAD_instrucs(addr_target, input_bytes, r_min = 14, r_addr = 8):
+    Nbytes = len(input_bytes)
+    if Nbytes % 4 != 0:
+        raise ValueError("WARNING: Can't dump fractional number of words, should edit function")
+    words = [input_bytes[i:i+4].hex().upper() for i in range(0, len(input_bytes), 4)]
+    Nwords = len(words)
+    
+    #addr_base, addr_off = split_addr(addr_target)
+    addr_hex = f'{addr_target:08X}'
+
+    PAD_instrucs = [f"lis {r_addr}, 0x{addr_hex[:4]}", 
+                    f"ori {r_addr}, {r_addr}, 0x{addr_hex[4:]}"]
+
+    A_min = max(r_min, 32 - Nwords)    # in case there's fewer than 18 words (72 bytes) in the file
+    A = A_min
+    for n, word in enumerate(words):
+        PAD_instrucs += [f"lis r{A}, 0x{word[:4]}",
+                         f"ori r{A}, r{A}, 0x{word[4:]}"]
+        A += 1
+        if A == 32:
+            PAD_instrucs += [f"stmw r{A_min}, 0 ({r_addr})"] # needs to be controller 4
+            Nwords_left = Nwords - (n + 1)
+            if Nwords_left == 0:
+                return PAD_instrucs
+            addr_target += (32-A_min)*4
+            #addr_base, addr_off = split_addr(addr_target)
+            addr_hex = f'{addr_target:08X}'
+            PAD_instrucs += [f"lis {r_addr}, 0x{addr_hex[:4]}", 
+                             f"ori {r_addr}, {r_addr}, 0x{addr_hex[4:]}"]
+            A_min = max(r_min, 32 - Nwords_left)
+            A = A_min
+    raise ValueError("Error in register indexing")
+
+
+def create_csv_for_file_dump(addr_target, binfile, csvfile, r_min = 14, r_addr = 8, ks=None):
+    with open(binfile, 'rb') as f:
+        input_bytes = f.read()
+    PAD_instrucs = dump_bytes_PAD_instrucs(addr_target, input_bytes, r_min = r_min, r_addr = r_addr)
+    PADs = [0x803F0F34 + 8*n for n in range(4)]
+    nop = "0x60000000"
+    with open(csvfile,'w') as f:
+        n = 0
+        for PAD_instruc in PAD_instrucs:
+            if PAD_instruc[:4] == 'stmw':
+                for j in range(n,3):
+                    f.write(f"0x{PADs[j]:08X}, {nop}\n")
+                    #print(f"0x{PADs[j]:08X}, nop")
+                PAD_addr = PADs[3]
+                PAD_word = get_ASM_encoding(PAD_instruc, addr=PAD_addr, ks=ks, output_type='hex')
+                f.write(f"0x{PAD_addr:08X}, 0x{PAD_word}\n")
+                for j in range(4):
+                    f.write(f"0x{PADs[j]:08X}, {nop}\n")
+                    #print(f"0x{PADs[j]:08X}, nop")
+                n = 0
+            else:
+                PAD_addr = PADs[n]
+                n = (n+1) % 4
+            PAD_word = get_ASM_encoding(PAD_instruc, addr=PAD_addr, ks=ks, output_type='hex')
+            f.write(f"0x{PAD_addr:08X}, 0x{PAD_word}\n")
+            #print(f"0x{PAD_addr:08X}, {PAD_instruc}")
+
+
+#######################################################################################
+# Automatically format addresses in mod files so we don't need to set them manually 
+#######################################################################################
+def format_mod(infile, start_addr: int, outfile):
+    with open(infile, 'r') as f1:
+        text = f1.read()
+        lines = text.splitlines()
+
+    # First pass: determine label addresses
+    labels = {}
+    current_addr = start_addr
+
+    for line in lines:
+        stripped = line.strip()
+
+        # Label definition
+        if stripped.endswith(":") and not stripped.startswith("#") and not is_hex(stripped[:-1]):
+            label = stripped[:-1]
+            labels[label] = current_addr
+            #print(label, f'{current_addr:08X}')
+            continue
+
+        # Instruction line (heuristic: starts with opcode or has registers)
+        if stripped and not stripped.startswith("#") and not is_hex(stripped[:8]):
+            current_addr += 4
+
+    # Second pass: emit output
+    output = []
+    current_addr = start_addr
+
+    for line in lines:
+        stripped = line.strip()
+        # is_label_line = stripped.endswith(":") and stripped[:-1] in labels
+        # if is_label_line:
+        #     continue
+
+        # Label definition → address label
+        if stripped.endswith(":") and not stripped.startswith("#") and not is_hex(stripped[:-1]):
+            label = stripped[:-1]
+            #output.append(f"{labels[label]:08X}:   {''}".rstrip())
+            continue
+
+        # Replace branch targets
+        def replace_label(match):
+            lbl = match.group(1)
+            return f"-> 0x{labels[lbl]:08X}"
+
+        if not stripped.startswith('#'):
+            line = re.sub(r"->\s*([A-Za-z_][A-Za-z0-9_]*)", replace_label, line)
+    
+        # If this is an instruction, prefix address (unless it already has one)
+        if stripped and not stripped.startswith("#") and not is_hex(stripped[:8]):
+            #print('aah', stripped)
+            output.append(f"{current_addr:08X}:   {line.strip()}")
+            current_addr += 4
+        else:
+            #print('bleh', line)
+            output.append(line)
+
+    out_text = "\n".join(output)
+    with open(outfile, 'w') as f2:
+        f2.write(out_text)
+    return current_addr     # address immediately afterwards
 
 
 #######################################################################################

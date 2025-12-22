@@ -1,5 +1,8 @@
 __pycache__/
+.venv/
 .ipynb_checkpoints/
 scratch/
-.venv/
-model_files/
+scratch.ipynb
+model_files/custom/
+model_files/vanilla/
+payload_mods_templates/

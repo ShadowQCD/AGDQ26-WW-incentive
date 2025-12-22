@@ -1,0 +1,46 @@
+#####################################################################################
+# Use custom hboots.bdl model for Water Boots
+#####################################################################################
+
+# Put injection hooks into daPy_lk_c::createHeap(daPy_lk_c *this)
+80123B74:   bl -> 0x803312C0        # bl -> 0x8012A40 (daPy_lk_c::initModel for Link.mpHbootsModelRightFoot)
+80123B8C:   bl -> 0x803312C0        # bl -> 0x8012A40 (daPy_lk_c::initModel for Link.mpHbootsModelLeftFoot)
+
+#####################################################################################
+
+# pData = pointer to custom hboots.bdl (the game classifies it as a BDLC file)
+803312C0:   lis r3, 0x8033
+803312C4:   ori r3, r3, 0x2000  # NOTE: MUST MATCH ADDRESS OF CUSTOM hboots.bdl
+
+#####################################################################################
+# Begin custom code with these registers:
+# r27 = pLink
+# r4 = p(Link.mpHbootsModelXXXXFoot)
+# r5 = 0x2D         # fileID for hboots.bdl inside Link.arc, not needed
+# r6 = 0x37221222   # differedDlistFlag (no idea what it does, keeping as is)
+#####################################################################################
+
+803312C8:   mflr r22                # save LR for return branch
+803312CC:   mr r23, r4              # save pointer to Link.mpHbootsModelXXXXFoot
+803312D0:   mr r24, r6              # save differedDlistFlag
+
+# Create J3DModelData for custom hboots
+803312D4:   li r4, 0x2020           # loadArgs (always 0x2020 for BDLC files, will need to check if we use anything else)
+803312D8:   bl -> 0x802FB94C        # r3 = pModelData = J3DModelLoaderDataBase::loadBinaryDisplayList(const void* pData, 0x2020)
+
+# Apply shaders/textures to J3DModelData? Not positive what setToonTex does
+803312DC:   mr r25, r3              # save pModelData for later (next line overwrites r3)
+803312E0:   bl -> 0x8006D990        # d_resorce::setToonTex(J3DModelData *pModelData)
+
+# Flags for mDoExt_J3DModel__create(...)
+803312E4:   li r4, 0                # modelFlag = 0 (copied from vanilla hboots J3DModel)
+803312E8:   mr r5, r24              # differedDlistFlag = 0x37221222
+
+# Create J3DModel for Link.mpHbootsModelXXXXFoot
+803312EC:   mr r3, r25              # r3 = pModelData
+803312F0:   bl -> 0x80016BB8        # r3 = pModel
+803312F4:   stw r3, 0 (r23)         # Link.mpHbootsModelXXXXFoot = pModel
+
+# Return branch
+803312F8:   mtlr r22
+803312FC:   blr

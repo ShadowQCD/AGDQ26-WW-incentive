@@ -1,0 +1,48 @@
+#####################################################################################
+# Set what happens when we open the water boots chest (other than model)
+#####################################################################################
+
+# Put injection hook into f_op_actor_mng::fopAcM_createItemForTrBoxDemo
+80026214:   bl -> 0x80330F90        # li r0, 0
+
+#####################################################################################
+# Check if it's the purple rupee/water boots chest
+80330F90:   cmpwi r4, 0x05
+80330F94:   bne -> 0x80330FBC
+
+#####################################################################################
+# Set water boots ID (0x2B) for the "get item" demo (triggers green rupee by default)
+80330F98:   li r4, 0x2B
+80330F9C:   mr r27, r4          # needed for fopAcM_createItemForTrBoxDemo
+
+#####################################################################################
+# Set day/weather
+#####################################################################################
+80330FA0:   lis r15, 0x803C
+
+# Set day of week
+80330FA4:   li r14, 1               # set to day 1 (change as desired)
+80330FA8:   sth r14, 0x4C30 (r15)
+
+# Trigger endless night
+80330FAC:   li r14, 0x9F            # Endless Night + related KoRL text (overwrites earlier line)
+80330FB0:   stb r14, 0x5236 (r15)
+
+#####################################################################################
+# Put iron boots item 0x29 in inventory (repurposed as water boots)
+80330FB4:   li r4, 0x29
+80330FB8:   stb r4, 0x4C4D (r15)     # currently uses iron boots slot but can put wherever
+
+
+#####################################################################################
+# Resume normal code (branch back into f_op_actor_mng::fopAcM_createItemForTrBoxDemo)
+80330FBC:   li r0, 0
+80330FC0:   blr
+
+
+#####################################################################################
+# Disable "heavy walk" animation when wearing boots
+80111F2C:   andis. r0, r0, 0x4000   # normally 0x42000; the 2 is a "wearing iron boots" flag
+
+# Disable iron boots walking sound
+## will find later

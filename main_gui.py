@@ -1,8 +1,8 @@
 import tkinter as tk
-from tkinter import ttk
-from tkinter import filedialog
+# from tkinter import ttk
+# from tkinter import filedialog
 from pathlib import Path
-from time import sleep
+from time import sleep, time
 
 import dolphin_memory_engine as DME
 from keystone import Ks, KS_ARCH_PPC, KS_MODE_PPC64
@@ -19,31 +19,42 @@ import helper_funcs as HF
 # PAD4_addr = 0x803F0F4C  # controller 4 C/LR data address
 
 payload_folder      = Path.cwd() / "payload_mods"
+model_folder        = Path.cwd() / "model_files"
+
 csv_folder          = Path.cwd() / "csv_files"
+model_csv_folder    = Path.cwd() / "model_csv_files"
 
 phase_1_AI_file     = "phase1_addr_instruc_pairs.txt"
 phase_1_bin_file    = "phase1.bin"
 phase_2_bin_file    = "phase2.bin"
 
-phase_m1_csv_file   = csv_folder / "phase_m1.csv"
-phase_1_csv_file    = csv_folder / "phase_1.csv"
-phase_2_csv_file    = csv_folder / "phase_2.csv"
-phase_3_csv_file    = csv_folder / "phase_3.csv"
+phase_m1_csv_file   = "phase_m1.csv"
+phase_1_csv_file    = "phase_1.csv"
+phase_2_csv_file    = "phase_2.csv"
+phase_3_csv_file    = "phase_3.csv"
 
-# nop         = 0x60000000 # "no operation" instruction
-# button_nop  = 0x10808080 # pscmpu1 cr1, p0, p16 (basically a nop; only affects CR1 which nothing should read from. controller inputs are Start + neutral gray stick)
-# icbi_r12    = 0x7C0067AC # icbi r0, r12 ; invalidates instruction cache at r12=0x803F0F3C (pad 2 C/LR address)
-# b_42        = 0x4BFFFFF0 # branch backwards 0x10 bytes (pad 4 -> pad 2)
-# b_4safety   = 0x4BE24718 # branch from pad 4 -> 0x80215664 (end of dMsg_Delete)
+phase_m1_csv_path   = csv_folder / phase_m1_csv_file
+phase_1_csv_path    = csv_folder / phase_1_csv_file
+phase_2_csv_path    = csv_folder / phase_2_csv_file
+phase_3_csv_path    = csv_folder / phase_3_csv_file
 
-ks = Ks(KS_ARCH_PPC, KS_MODE_PPC64)
+model_addr_file_pairs = [   (0x80332000, model_folder/"custom"/"hboots_Toad.bdl") ,
+                            #(0x803318C0, model_folder/"iron_boots"/"JKRMemArchive.bin") ,
+                            #(0x80331940, model_folder/"iron_boots"/"Vboot.rarc") ,
+                        ]
 
-phase_1_Nreps = 10   # number of times to perform each DME write in phase 0.5-1.5 
-                    # each DME write in these phases has a ~20% chance to occur while that line is being executed, so P(success) ~ (1-.2**Nreps)**Ninstructions
+# Set number of times to perform each DME write in each phase
+phase_m1_Nreps  = 3     # should only need to be 1
+phase_1_Nreps   = 10    # each DME write in phase 1 has a ~20% chance to occur while that line is being executed, so P(success) ~ (1-.2**Nreps)**Ninstructions
+phase_2_Nreps   = 3     # should only need to be 1, but have been experiencing weird issues
+phase_25_Nreps  = 3     # this is where the real issues have been, maybe stmw timing issues
+phase_3_Nreps   = 3     # should only need to be 1
 
 # GUI color scheme
 BG = "#2e2e2e"
 FG = "#FFFFFF"
+
+ks = Ks(KS_ARCH_PPC, KS_MODE_PPC64)
 
 ############################################################
 # LOGGING SUPPORT
@@ -55,19 +66,43 @@ def log(msg):
 ############################################################
 # DME Write Wrappers
 ############################################################
-def my_DME_write(addr, word, pause=0.001, Nreps=1):
+def my_DME_write(addr, word, pause=0.001, Nreps=1, showlog=True):
     addr, word = HF.addr_value_converter(addr, word, 'int')
     for _ in range(Nreps):
         DME.write_word(addr, word)
         sleep(pause)
-    log(f"Wrote 0x{word:08X} to 0x{addr:08X} (x{Nreps})")
+    # Nreps = 1
+    # while True:
+    #     DME.write_word(addr, word)
+    #     sleep(pause)
+    #     check = DME.read_word(addr)
+    #     if check == word:
+    #         break
+    #     Nreps += 1
+    #     sleep(pause)
+        
+    if showlog:
+        log(f"Wrote 0x{word:08X} to 0x{addr:08X} (x{Nreps})")
 
-def my_DME_writes_from_csv(csv_file, Nreps=1):
-    with open(csv_file,'r') as f:
-        for line in f:
+def my_DME_writes_from_csv(csv_path, Nreps=1):
+    with open(csv_path,'r') as f:
+        lines = f.readlines()
+        Nwords = len(lines)
+        
+        full_log = False # (Nwords < 100)
+        t0 = time()
+        for n, line in enumerate(lines):
             PAD_addr, word = line.strip().replace(' ','').split(",")
-            my_DME_write(PAD_addr, word, Nreps=Nreps)
-
+            my_DME_write(PAD_addr, word, Nreps=Nreps, showlog=full_log)
+            
+            # if not full_log:
+            #     # Log progress every 10%
+            #     progress = (n + 1) / Nwords
+            #     if progress % 0.1 < (1 / Nwords):
+            #         log(f"Progress: {progress*100:.0f}%")
+        log(f"Finished {csv_path.name} writes in {time()-t0:.1f} s")
+            
+                
 ############################################################
 # HOOK TO DOLPHIN
 ############################################################
@@ -127,7 +162,7 @@ def rebuild_phase2_bin():
         ks=ks
     )
     
-    HF.phase2_bin_to_csv(phase_2_bin_file, phase_2_csv_file)
+    HF.phase2_bin_to_csv(phase_2_bin_file, phase_2_csv_path)
     log(f"{phase_2_bin_file}, {phase_2_csv_file} regenerated.\n")
 
 ########################################################################
@@ -136,8 +171,19 @@ def rebuild_phase2_bin():
 def rebuild_phase1_bin():
     phase1_AI_pairs = HF.get_addr_value_pairs_from_files(phase_1_AI_file, output_type='ASM', ks=ks)
     HF.phase1_create_bin(phase1_AI_pairs, phase_1_bin_file, ks=ks)
-    HF.phase1_bin_to_csv(phase_1_bin_file, phase_1_csv_file)
+    HF.phase1_bin_to_csv(phase_1_bin_file, phase_1_csv_path)
     log(f"{phase_1_bin_file}, {phase_1_csv_file} regenerated.\n")
+
+
+########################################################################
+# Create phase 2.5 (ARC Dump) csv file from ARC file and target address
+########################################################################
+def rebuild_model_csv_files():
+    for addr, f in model_addr_file_pairs:
+        csv_filename = f.stem + ".csv"
+        csv_path = csv_folder / csv_filename
+        HF.create_csv_for_file_dump(addr, f, csv_path, r_min = 17, r_addr = 16, ks=None)
+        log(f"{csv_filename} regenerated.\n")
 
 
 ############################################################
@@ -150,7 +196,7 @@ def rebuild_phase1_bin():
 # PHASE -1 (pre-ACE): Set controllers 2-4 at start (optional, can manually set before the run instead)
 ######################################################################################################
 def run_phase_m1():
-    log("Running Phase -1...")
+    log(f"Running Phase -1... (Nreps={phase_m1_Nreps})")
     # # nop out controller 2-4 button/left stick data (will be different if using unplug strats; need to test)
     # for n in range(3):
     #     button_addr = 0x803F0F38 + n*0x08
@@ -160,7 +206,7 @@ def run_phase_m1():
     # my_DME_write(PAD3_addr, icbi_r12)  # invalidate instruction cache at r12=0x803F0F3C so that the CPU sees updates to pad 2 C/LR data
     # my_DME_write(PAD4_addr, b_42)      # branch from pad 4 -> pad 2; main loop for phase 1
     
-    my_DME_writes_from_csv(phase_m1_csv_file, Nreps=1)
+    my_DME_writes_from_csv(phase_m1_csv_path, Nreps=phase_m1_Nreps)
     log("Phase -1 complete.\n")
 
 ######################################################################################################
@@ -176,8 +222,8 @@ def run_phase_m1():
 # PHASE 1: Set up input detection & cache management for phase 2 (main payload)
 ################################################################################
 def run_phase_1():
-    log("Running Phase 1...")
-    my_DME_writes_from_csv(phase_1_csv_file, Nreps=10)
+    log(f"Running Phase 1... (Nreps={phase_1_Nreps})")
+    my_DME_writes_from_csv(phase_1_csv_path, Nreps=phase_1_Nreps)
     log("Phase 1 complete.\n")
     
     # my_DME_write(0x8039D778, 0x802D5820)
@@ -188,28 +234,27 @@ def run_phase_1():
 # PHASE 2: Write main payload using pads 1-4 and resume gameplay
 ##################################################################
 def run_phase_2():
-    log("Running Phase 2...")
-    my_DME_writes_from_csv(phase_2_csv_file, Nreps=1)
-    
+    log(f"Running Phase 2... (Nreps={phase_2_Nreps})")
+    my_DME_writes_from_csv(phase_2_csv_path, Nreps=phase_2_Nreps)
     log("Phase 2 complete.\n")
 
+
+def run_phase_25():
+    log(f"Running Phase 2.5... (Nreps={phase_25_Nreps})")
+    for addr, f in model_addr_file_pairs:
+        csv_filename = f.stem + ".csv"
+        csv_path = csv_folder / csv_filename
+        my_DME_writes_from_csv(csv_path, Nreps=phase_25_Nreps)
+    log("Phase 2.5 complete.\n")
 
 
 #################################################################################################
 # PHASE 3 (old, now included in phase 2): Perform any cleanup (if necessary) and resume gameplay
 #################################################################################################
 def run_phase_3():
-    log("Running Phase 3...")
-    # cleanup TBD; could zero out all addresses in phase1_AI_file but doesn't seem necessary
-    # Branch to safety to resume game
-    #DME.write_bytes(PAD4_addr, b_4safety)   # 0x803F0F4C: b -> 0x80215664
-    # my_DME_write(0x803F0F3C, HF.get_ASM_encoding('lis r29, 0x8157', ks=ks))
-    # my_DME_write(0x803F0F44, HF.get_ASM_encoding('ori r29, r29, 0x41E0', ks=ks))
-    # my_DME_write(0x803F0F4C, HF.get_ASM_encoding('b -> 0x802CFF74', addr=0x803F0F4C, ks=ks))
-
-    my_DME_writes_from_csv(phase_3_csv_file, Nreps=1)
+    log(f"Running Phase 3... (Nreps={phase_3_Nreps})")
+    my_DME_writes_from_csv(phase_3_csv_path, Nreps=phase_3_Nreps)
     log("Phase 3 complete.\n")
-
 
 
 ############################################################################
@@ -250,10 +295,11 @@ btn_0   = tk.Button(phase_frame, text="Phase 0: Trigger ACE", state="disabled")
 btn_1   = tk.Button(phase_frame, text="Phase 1: Setup",   command=run_phase_1)
 #btn_15  = tk.Button(phase_frame, text="Phase 1.5", command=run_phase_15)
 btn_2   = tk.Button(phase_frame, text="Phase 2: Main Payload",   command=run_phase_2)
+btn_25   = tk.Button(phase_frame, text="Phase 2.5: Model Data",   command=run_phase_25)
 btn_3   = tk.Button(phase_frame, text="Phase 3: Resume Game",   command=run_phase_3)
 
 #for b in (btn_m1, btn_05, btn_1, btn_15, btn_2, btn_3):
-for b in (btn_m1, btn_0, btn_1, btn_2, btn_3):
+for b in (btn_m1, btn_0, btn_1, btn_2, btn_25, btn_3):
     b.pack(side="left", padx=5)
 
 
@@ -276,8 +322,14 @@ regen_btn.pack(pady=5)
 #####################################
 # 'Regenerate phase1.bin' button
 #####################################
-# regen1_btn = tk.Button(files_frame, text=f"Regenerate {phase1_bin_file}", command=rebuild_phase1_bin)
-# regen1_btn.pack(side='right')
+regen1_btn = tk.Button(files_frame, text=f"Regenerate {phase_1_bin_file}", command=rebuild_phase1_bin)
+regen1_btn.pack(side='right', padx=5)
+
+#####################################
+# 'Regenerate phase25.csv' button
+#####################################
+regen25_btn = tk.Button(files_frame, text=f"Regenerate model csv files", command=rebuild_model_csv_files)
+regen25_btn.pack(side='right')
 
 ############################################################
 # Log output widget

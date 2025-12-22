@@ -3,9 +3,9 @@
 ################################################################################
 
 # Controller 4 input detection
-803F0F50:   lwz r28, 0x10 (r12)
-803F0F54:   lwz r29, 0x10 (r12)
-803F0F58:   cmpw r28, r29           # check if controller 4 C/LR data has changed from a DME write
+803F0F50:   lwz r14, 0x10 (r12)
+803F0F54:   lwz r15, 0x10 (r12)
+803F0F58:   cmpw r14, r15           # check if controller 4 C/LR data has changed from a DME write
 803F0F5C:   beq -> 0x803F0F54       # loop until it does
 
 # Cache management

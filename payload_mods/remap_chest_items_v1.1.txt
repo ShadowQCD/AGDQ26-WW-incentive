@@ -1,0 +1,32 @@
+#####################################################################################
+# Remap chest item IDs by hooking into f_op_actor_mng::fopAcM_createItemForTrBoxDemo
+#####################################################################################
+
+# Put injection hook into f_op_actor_mng::fopAcM_createItemForTrBoxDemo
+80026200:   bl -> 0x80330F48
+
+
+####################################################################
+# Map heart piece (0x07) -> ghost ship chart (0xDB)
+80330F48:   cmpwi r4, 0x07
+80330F4C:   bne -> 0x80330F58
+80330F50:   li r4, 0xDB
+80330F54:   b -> 0x80330F68
+
+# Map orange rupee (0x06) -> big bombs (0x31 is normal bombs)
+80330F58:   cmpwi r4, 0x06
+80330F5C:   bne -> 0x80330F68
+80330F60:   li r4, 0x31
+80330F64:   b -> 0x80330F68
+
+# # Map purple rupee (0x05) -> water boots (0x2B) ; now handled by water_boots_chest.txt
+# CHECK3:
+# cmpwi r4, 0x05
+# bne -> 0x80330FA0
+# li r4, 0x2B
+# b -> END
+
+####################################################################
+# Resume f_op_actor_mng::fopAcM_createItemForTrBoxDemo (run at end)
+80330F68:   or. r27, r4, r4
+80330F6C:   blr
