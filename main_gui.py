@@ -30,8 +30,10 @@ phase_2_bin_file    = "phase2.bin"
 
 phase_m1_csv_file   = "phase_m1.csv"
 phase_1_csv_file    = "phase_1.csv"
+#phase_1_csv_file    = "phase_1_old.csv"
 phase_2_csv_file    = "phase_2.csv"
 phase_3_csv_file    = "phase_3.csv"
+#phase_3_csv_file    = "phase_3_hack.csv"
 
 phase_m1_csv_path   = csv_folder / phase_m1_csv_file
 phase_1_csv_path    = csv_folder / phase_1_csv_file
@@ -210,13 +212,13 @@ def run_phase_m1():
     log("Phase -1 complete.\n")
 
 ######################################################################################################
-# PHASE 0: Trigger ACE
+# PHASE 0: Trigger ACE (only run this if using the "hac)
 ######################################################################################################
-# def run_phase_0():
-#     log("Running Phase 0...")
-#     #my_DME_write(0x8039D778, 0x803F0F3C)
-#     #my_DME_writes_from_csv('phase_0_hack.csv', Nreps=1)
-#     log("Phase 0 complete.\n")
+def run_phase_0_hack():
+    log(f"Running Phase 0... (Nreps={2})")
+    #my_DME_write(0x8039D778, 0x803F0F3C)
+    my_DME_writes_from_csv(csv_folder/'phase_0_hack.csv', Nreps=2)
+    log("Phase 0 complete.\n")
 
 ################################################################################
 # PHASE 1: Set up input detection & cache management for phase 2 (main payload)
@@ -289,7 +291,7 @@ phase_frame = tk.LabelFrame(root, text="Phases", padx=10, pady=10, bg=BG, fg=FG)
 phase_frame.pack(padx=10, pady=10, fill="x")
 
 btn_m1  = tk.Button(phase_frame, text="Phase -1: Set PADs 2-4",   command=run_phase_m1)
-#btn_0   = tk.Button(phase_frame, text="Phase 0: Trigger ACE", command=run_phase_0)
+#btn_0   = tk.Button(phase_frame, text="Phase 0: Trigger ACE", command=run_phase_0_hack)
 btn_0   = tk.Button(phase_frame, text="Phase 0: Trigger ACE", state="disabled")
 #btn_05  = tk.Button(phase_frame, text="Phase 0.5", command=run_phase_05)
 btn_1   = tk.Button(phase_frame, text="Phase 1: Setup",   command=run_phase_1)
