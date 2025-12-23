@@ -1,0 +1,111 @@
+#############################################################################
+# Modify Ghost Ship Loading Zones
+#############################################################################
+
+# Put injection hook in d_com_inf_game::dComIfGp_setNextStage
+80053888:   b -> 0x80331000             # replaces blr
+
+#############################################################################
+# Check mStageName "PShi"
+80331000:   lis     r3, 0x803C
+80331004:   ori     r3, r3, 0x9D48      # r3 = 803C9D48 (start of mNextStage.mStageName)
+
+80331008:   lhz     r4, 0(r3)
+8033100C:   cmpwi   r4, 0x5053
+80331010:   bne ->  0x80331020          # fail → check next mStageName (sea 45)
+
+80331014:   lhz     r4, 2(r3)
+80331018:   cmpwi   r4, 0x6869
+8033101C:   beq ->  0x8033105C          # Branch to set mStageName & Room Number
+
+#############################################################################
+# Check mStageName "a 45"
+80331020:   lhz     r4, 2(r3)
+80331024:   cmpwi   r4, 0x6100
+80331028:   bne ->  0x80331038          # fail → check next mStageName (sea iB)
+
+8033102C:   lhz     r4, 4(r3)
+80331030:   cmpwi   r4, 0x3435
+80331034:   beq ->  0x80331094           # Branch to Setting Event Register
+
+#############################################################################
+# Check mStageName "ea iB"
+80331038:   lhz     r4, 1(r3)
+8033103C:   cmpwi   r4, 0x6561
+80331040:   bne ->  0x8033108C          # fail → blr
+
+80331044:   lhz     r4, 3(r3)
+80331048:   cmpwi   r4, 0x0069
+8033104C:   bne ->  0x8033108C          # fail → blr
+
+80331050:   lbz     r4, 5(r3)
+80331054:   cmpwi   r4, 0x42            
+80331058:   beq ->  0x803310D4          # tincle warp
+
+#############################################################################
+# write "SubD45\0" to mStageName
+8033105C:   lis     r4, 0x5375
+80331060:   ori     r4, r4, 0x6244
+80331064:   stw     r4, 0(r3)            # "SubD"
+80331068:   li      r4, 0x3435           # "45"
+8033106C:   sth     r4, 4(r3)
+80331070:   li      r4, 0
+80331074:   stb     r4, 6(r3)            # null terminator
+
+#######################################
+# Set SubD45 room number
+80331078:   lis     r5, 0x8033
+8033107C:   lbz     r4, 0x1090(r5)      # r4 = roomNo (stored at 80331090)
+80331080:   stb     r4, 0xA(r3)         # write roomNo to mNextStage.mRoomNo
+80331084:   addi    r4, r4, 1           # increase roomNo by 1
+80331088:   stb     r4, 0x1090(r5)      # store it for next time
+
+#############################################################################
+# Resume d_com_inf_game::dComIfGp_setNextStage
+8033108C:   blr
+
+#############################################################################
+# SubD45 room number; gets increased by 1 each visit
+80331090:   00
+
+#############################################################################
+# Set GShip Event Register back to 0
+80331094:   lis     r17, 0x803C
+80331098:   li      r18, 0
+8033109C:   stb     r18, 0x52B4(r17)
+
+#############################################################################
+# Check if Bombs Slot contains 0x31
+803310A0:   lbz     r18, 0x4C51(r17)
+803310A4:   cmpwi   r18, 0x31
+803310A8:   bne ->  0x803310F4          # fail → respawn FF2
+
+#############################################################################
+# write "M_DaiB" to mStageName
+803310AC:   lis     r4, 0x4D5F
+803310B0:   ori     r4, r4, 0x4461
+803310B4:   stw     r4, 0(r3)            # "M_Da"
+803310B8:   li      r4, 0x6942
+803310BC:   sth     r4, 4(r3)            # iB
+803310C0:   li      r4, 0
+803310C4:   stb     r4, 6(r3)            # null terminator     
+803310C8:   li      r4, 1
+803310CC:   stb     r4, 9(r3)            #Set Spawn Point
+803310D0:   blr
+#############################################################################
+# Write "tincle" to mStageName 
+803310D4:   lis     r4, 0x7469
+803310D8:   ori     r4, r4, 0x6E63
+803310DC:   stw     r4, 0(r3)
+803310E0:   li      r4, 0x6C65
+803310E4:   sth     r4, 4(r3)
+803310E8:   li      r4, 0
+803310EC:   sth     r4, 9(r3)           #Spawn Point & RoomNo
+803310F0:   blr
+##############################################################################
+# Respawn at FF2
+803310F4:   li      r20, 0x64
+803310F8:   stb     r20, 9(r3)           #Spawn Point
+803310FC:   li      r20, 0x01
+80331100:   stb     r20, 10(r3)          #RoomNo
+80331104:   blr

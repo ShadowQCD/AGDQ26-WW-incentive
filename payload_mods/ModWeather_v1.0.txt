@@ -1,0 +1,33 @@
+#############################################################################
+# Always Snowing and Fast Wind Outside FF2
+#############################################################################
+
+# Put injection hook in d_a_player_main::daPy_lk_c::setRoomInfo
+
+8011EF90:   b ->   0x80331134           # 0x30 Padding between new remap LZs
+
+#############################################################################
+# Always Snowing
+80331134:   lis     r21, 0x803E
+80331138:   li      r22, 0x20      
+8033113C:   stb     r22, 0x5483(r21)
+
+# Check Stage Info ID, Current room number (00), Previous room number(01) 
+80331140:   lis     r21, 0x803C
+80331144:   lbz     r22, 0x53A4(r21)
+80331148:   cmpwi   r22, 0x00
+8033114C:   bne ->  0x80331184
+80331150:   lis     r21, 0x803F
+80331154:   lbz     r22, 0x6A78(r21)
+80331158:   cmpwi   r22, 0x00
+8033115C:   bne ->  0x80331184
+80331160:   lis     r21, 0x803F                   
+80331164:   lbz     r22, 0x6A79(r21)
+80331168:   cmpwi   r22, 0x01
+8033116C:   bne ->  0x80331184
+80331170:   lis     r21, 0x803E
+80331174:   li      r22, 0x407F             # Fast Wind
+80331178:   sth     r22, 0x544C(r21)        
+8033117C:   li      r22, 0x20 
+80331180:   stb     r22, 0x545A(r21)
+80331184:   blr

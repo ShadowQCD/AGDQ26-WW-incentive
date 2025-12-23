@@ -1,0 +1,92 @@
+#############################################################################
+# Spawn Ghost Ship Out of Bounds
+#############################################################################
+
+# Put injection hook in d_stage::dStage_playerInit
+80041E68:   b ->   0x80331350
+
+# d_lib::dLib_pathMove early return (keep Ghost Ship at pPos)
+80057AA4:   blr  
+
+#############################################################################
+# Spawn Ghost Ship
+80331350:   li      r3, 0xB3            # procName
+80331354:   lis     r4, 0x0000 
+80331358:   ori     r4, r4, 0x0000      # Parameters ; No Path, 1st moon phase
+8033135C:   lis     r5, 0x8033
+80331360:   ori     r5, r5, 0x1388      # Position ; Out of Bounds outside FF2          
+80331364:   lis     r6, 0xFFFF          
+80331368:   ori     r6, r6, 0xFFFF      # roomNo
+8033136C:   lis     r7, 0x0000          # pAngle
+80331370:   lis     r8, 0x0000          # pScale
+80331374:   lis     r9, 0xFFFF          
+80331378:   ori     r9, r9, 0xFFFF      # subtype
+8033137C:   lis     r10, 0x0000         # mpCallback
+80331380:   bl ->   0x8002451C          # fopAcM_create call
+80331384:   b  ->   0x80331394
+
+80331388:   C8AD5700                    # X (GShip)
+8033138C:   00000000                    # Y 
+80331390:   C8AD5700                    # Z 
+
+#############################################################################
+# Spawn Reward in tincle
+80331394:   lis     r17, 0x803C
+80331398:   ori     r17, r17, 0x9D48
+8033139C:   lbz     r18, 0(r17)
+803313A0:   cmpwi   r18, 0x74           # Check mStageName "ti"
+803313A4:   bne ->  0x803313FC
+803313A8:   lbz     r18, 1(r17)
+803313AC:   cmpwi   r18, 0x69
+803313B0:   bne ->  0x803313FC
+803313B4:   li      r3, 0x126           # procName
+803313B8:   lis     r4, 0x002E 
+803313BC:   ori     r4, r4, 0x0104      # Parameters
+803313C0:   lis     r5, 0x8033
+803313C4:   ori     r5, r5, 0x1404      # Position ; 0 , 0 , 0        
+803313C8:   lis     r6, 0xFFFF          
+803313CC:   ori     r6, r6, 0xFFFF      # roomNo
+803313D0:   lis     r7, 0x8033          
+803313D4:   ori     r7, r7, 0x1410      # pAngle
+803313D8:   lis     r8, 0x0000          # pScale
+803313DC:   lis     r9, 0xFFFF          
+803313E0:   ori     r9, r9, 0xFFFF      # subtype
+803313E4:   lis     r10, 0x0000         # mpCallback
+803313E8:   bl ->   0x8002451C          # fopAcM_create call
+
+803313EC:   lis     r17, 0x803C         # Zone Switch for Chest
+803313F0:   ori     r17, r17, 0x53B7
+803313F4:   li      r18, 0x1
+803313F8:   stb     r18, 0(r17)       
+
+803313FC:   li      r3, 0x1
+80331400:   b  ->   0x80041E6C
+
+80331404:   00000000                    # XPos (Treasure Chest)
+80331408:   00000000                    # YPos
+8033140C:   00000000                    # ZPos
+
+80331410:   00000000                    # XRot, YRot
+80331414:   2100                        # ZRot used by ItemID (Tuner) & "Open Switch"
+
+#############################################################################
+# Put injection hook in d_stage::dStage_roomControl_c::loadRoom
+80040E6C:   b ->    0x80331418
+
+# Check Stage Info ID, Current room number (00), Previous room number(01)
+80331418:   lis     r19, 0x803C
+8033141C:   lbz     r18, 0x53A4(r19)
+80331420:   cmpwi   r18, 0x00
+80331424:   bne ->  0x8033144C
+80331428:   lis     r19, 0x803F
+8033142C:   lbz     r18, 0x6A78(r19)
+80331430:   cmpwi   r18, 0x00
+80331434:   bne ->  0x8033144C
+80331438:   lis     r19, 0x803F                   
+8033143C:   lbz     r18, 0x6A79(r19)
+80331440:   cmpwi   r18, 0x01
+80331444:   bne ->  0x8033144C
+80331448:   blr
+
+8033144C:   stwu    r1, -0x30(r1)
+80331450:   b ->    0x80040E70

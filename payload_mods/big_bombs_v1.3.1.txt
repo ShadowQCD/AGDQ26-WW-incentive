@@ -1,0 +1,56 @@
+#############################################################################
+# Make bombs huge with giant explosion radius
+#############################################################################
+
+# Put injection hook in daPy_lk_c::makeItemType
+8010CA18:   b ->    0x80331520
+
+# Put injection hook in daBomb_c::procExplode_init
+800DB4A4:   b ->    0x80331538
+
+# Put injection hook in f_op_actor_mng::fopAcM_createDemoItem
+80026980:   b ->    0x8033156C
+
+#############################################################################
+# Set Bomb Actor Scale only when created by Link
+
+80331520:   lis     r21, 0x41A0         ## 41A00000 Scale of 20
+80331524:   stw     r21, 0x214(r4)      # X
+80331528:   stw     r21, 0x218(r4)      # Y
+8033152C:   stw     r21, 0x21C(r4)      # Z
+
+80331530:   lwz     r0, 0x3190(r31)
+80331534:   b ->    0x8010CA1C
+
+#############################################################################
+# Check Actor Scale ; Set Explosion Radius
+
+80331538:   cmpwi   r30, 0              # r30 Bomb Heap if created by Link
+8033153C:   beq ->  0x80331564
+80331540:   lhz     r21, 0x214(r30)
+80331544:   cmpwi   r21, 0x41A0         # Check Scale X is 20
+80331548:   beq ->  0x80331554
+8033154C:   lfs     f1, -0x64D0(r2)
+80331550:   b ->    0x800DB4A8
+80331554:   lis     r21, 0x8033
+80331558:   ori     r21, r21, 0x1568
+8033155C:   lfs     f1, 0(r21)          # Load Explosion Radius
+80331560:   b ->    0x800DB4A8
+80331564:   b ->    0x8033154C          
+
+80331568:   6700                        # explosion radius scale
+#############################################################################
+# Modify Demo Bombs Scale
+
+8033156C:   cmpwi   r4, 0x31            # r4 ItemID
+80331570:   bne ->  0x8033158C
+80331574:   lis     r8, 0x8033         
+80331578:   ori     r8, r8, 0x1580      # r8 Scale
+8033157C:   b ->    0x8033158C
+
+80331580:   40000000                    # X Scale (2)
+80331584:   40000000                    # Y Scale (2)
+80331588:   40000000                    # Z Scale (2)
+
+8033158C:   stwu    r1, -0x30(r1)
+80331590:   b ->    0x80026984
