@@ -8,6 +8,7 @@ import dolphin_memory_engine as DME
 from keystone import Ks, KS_ARCH_PPC, KS_MODE_PPC64
 
 import helper_funcs as HF
+import picto_functions as picto
 
 
 ############################################################
@@ -19,10 +20,10 @@ import helper_funcs as HF
 # PAD4_addr = 0x803F0F4C  # controller 4 C/LR data address
 
 payload_folder      = Path.cwd() / "payload_mods"
-model_folder        = Path.cwd() / "model_files"
+res_folder          = Path.cwd() / "res_files"
 
 csv_folder          = Path.cwd() / "csv_files"
-model_csv_folder    = Path.cwd() / "model_csv_files"
+res_csv_folder      = Path.cwd() / "res_csv_files"
 
 phase_1_AI_file     = "phase1_addr_instruc_pairs.txt"
 phase_1_bin_file    = "phase1.bin"
@@ -40,10 +41,11 @@ phase_1_csv_path    = csv_folder / phase_1_csv_file
 phase_2_csv_path    = csv_folder / phase_2_csv_file
 phase_3_csv_path    = csv_folder / phase_3_csv_file
 
-model_addr_file_pairs = [   (0x80332000, model_folder/"custom"/"hboots_Toad.bdl") ,
-                            #(0x803318C0, model_folder/"iron_boots"/"JKRMemArchive.bin") ,
-                            #(0x80331940, model_folder/"iron_boots"/"Vboot.rarc") ,
-                        ]
+res_addr_file_pairs = [ (0x80332000, res_folder/"hboots_Toad.bdl") ,
+                        (0x81578CC0, res_folder/"custom_photo.png") ,
+                        #(0x803318C0, res_folder/"iron_boots"/"JKRMemArchive.bin") ,
+                        #(0x80331940, res_folder/"iron_boots"/"Vboot.rarc") ,
+                      ]
 
 # Set number of times to perform each DME write in each phase
 phase_m1_Nreps  = 3     # should only need to be 1
@@ -150,12 +152,16 @@ def hook_to_dolphin():
 ############################################################
 payload_vars = {}
 payload_files = sorted(payload_folder.iterdir())
+res_vars = {}
 
 def rebuild_phase2_bin():
     selected_files = [f for f,v in payload_vars.items() if v.get()==1]
+    hboots_warning = False
     log(f"Rebuilding {phase_2_bin_file} with:")
     for s in selected_files:
         log(f"  - {s.name}")
+        if 'hboots_manager' in s.stem:
+            hboots_warning = True
 
     HF.phase2_create_bin_from_files(
         selected_files,
@@ -167,6 +173,10 @@ def rebuild_phase2_bin():
     HF.phase2_bin_to_csv(phase_2_bin_file, phase_2_csv_path)
     log(f"{phase_2_bin_file}, {phase_2_csv_file} regenerated.\n")
 
+    if hboots_warning:
+        log("Note: hboots_manager requires an hboots .bdl file to be included in phase 2.5\n")
+
+
 ########################################################################
 # Create phase 1 binary file from file of (address, instruction) pairs
 ########################################################################
@@ -177,15 +187,26 @@ def rebuild_phase1_bin():
     log(f"{phase_1_bin_file}, {phase_1_csv_file} regenerated.\n")
 
 
-########################################################################
-# Create phase 2.5 (ARC Dump) csv file from ARC file and target address
-########################################################################
-def rebuild_model_csv_files():
-    for addr, f in model_addr_file_pairs:
+#############################################################################
+# Create phase 2.5 (resource dump) csv file from ARC file and target address
+#############################################################################
+def rebuild_resource_csv_files():
+    # Only regenerate CSVs for resource files that are selected via checkboxes
+    selected_pairs = [(addr, f) for addr, f in res_addr_file_pairs if res_vars.get(f, tk.IntVar()).get() == 1]
+    if not selected_pairs:
+        log("No resource files selected for regeneration.\n")
+        return
+
+    for addr, f in selected_pairs:
         csv_filename = f.stem + ".csv"
         csv_path = csv_folder / csv_filename
-        HF.create_csv_for_file_dump(addr, f, csv_path, r_min = 17, r_addr = 16, ks=None)
-        log(f"{csv_filename} regenerated.\n")
+        if f.suffix == '.png':
+            cmpr_data = picto.image_to_CMPR(f, out_file="photo.cmpr", width=152, height=104, resize_if_needed=True)
+            HF.create_csv_for_file_dump(addr, cmpr_data, csv_path, r_min = 17, r_addr = 16, ks=None)
+        else:
+            HF.create_csv_for_file_dump(addr, f, csv_path, r_min = 17, r_addr = 16, ks=None)
+        log(f"{csv_filename} regenerated.")
+    log(' ')
 
 
 ############################################################
@@ -243,7 +264,12 @@ def run_phase_2():
 
 def run_phase_25():
     log(f"Running Phase 2.5... (Nreps={phase_25_Nreps})")
-    for addr, f in model_addr_file_pairs:
+    selected_pairs = [(addr, f) for addr, f in res_addr_file_pairs if res_vars.get(f, tk.IntVar()).get() == 1]
+    if not selected_pairs:
+        log("No resource files selected for Phase 2.5. Nothing to write.\n")
+        return
+
+    for addr, f in selected_pairs:
         csv_filename = f.stem + ".csv"
         csv_path = csv_folder / csv_filename
         my_DME_writes_from_csv(csv_path, Nreps=phase_25_Nreps)
@@ -297,7 +323,7 @@ btn_0   = tk.Button(phase_frame, text="Phase 0: Trigger ACE", state="disabled")
 btn_1   = tk.Button(phase_frame, text="Phase 1: Setup",   command=run_phase_1)
 #btn_15  = tk.Button(phase_frame, text="Phase 1.5", command=run_phase_15)
 btn_2   = tk.Button(phase_frame, text="Phase 2: Main Payload",   command=run_phase_2)
-btn_25   = tk.Button(phase_frame, text="Phase 2.5: Model Data",   command=run_phase_25)
+btn_25   = tk.Button(phase_frame, text="Phase 2.5: Resource Data",   command=run_phase_25)
 btn_3   = tk.Button(phase_frame, text="Phase 3: Resume Game",   command=run_phase_3)
 
 #for b in (btn_m1, btn_05, btn_1, btn_15, btn_2, btn_3):
@@ -308,8 +334,11 @@ for b in (btn_m1, btn_0, btn_1, btn_2, btn_25, btn_3):
 ############################################################
 # Mods selector frame with 'Regenerate phase2.bin' button
 ############################################################
-files_frame = tk.LabelFrame(root, text="Main Payload Mod Files", padx=10, pady=10, bg=BG, fg=FG)
-files_frame.pack(padx=10, pady=10, fill="both")
+container_frame = tk.Frame(root, bg=BG)
+container_frame.pack(padx=10, pady=10, fill="both")
+
+files_frame = tk.LabelFrame(container_frame, text="Main Payload Mod Files", padx=10, pady=10, bg=BG, fg=FG)
+files_frame.pack(side="left", padx=5, pady=0, fill="both", expand=True)
 
 for f in payload_files:
     var = tk.IntVar(value=1)
@@ -317,21 +346,35 @@ for f in payload_files:
     tk.Checkbutton(files_frame, text=f.name, variable=var,
                    bg=BG, fg=FG, selectcolor=BG, activebackground=BG, activeforeground=FG
                    ).pack(anchor='w')
-
 regen_btn = tk.Button(files_frame, text=f"Regenerate {phase_2_bin_file}", command=rebuild_phase2_bin)
 regen_btn.pack(pady=5)
 
 #####################################
 # 'Regenerate phase1.bin' button
 #####################################
-regen1_btn = tk.Button(files_frame, text=f"Regenerate {phase_1_bin_file}", command=rebuild_phase1_bin)
-regen1_btn.pack(side='right', padx=5)
+# regen1_btn = tk.Button(files_frame, text=f"Regenerate {phase_1_bin_file}", command=rebuild_phase1_bin)
+# regen1_btn.pack(side='right', padx=5)
+
+
+############################################################
+# Resource selector frame for Phase 2.5
+############################################################
+res_frame = tk.LabelFrame(container_frame, text="Resource Files (Phase 2.5)", padx=10, pady=10, bg=BG, fg=FG)
+res_frame.pack(side="left", padx=5, pady=0, fill="both")
+
+# Build a checkbox for each resource file defined in res_addr_file_pairs
+for addr, f in res_addr_file_pairs:
+    var = tk.IntVar(value=1)
+    res_vars[f] = var
+    tk.Checkbutton(res_frame, text=f.name, variable=var,
+                   bg=BG, fg=FG, selectcolor=BG, activebackground=BG, activeforeground=FG
+                   ).pack(anchor='w')
 
 #####################################
 # 'Regenerate phase25.csv' button
 #####################################
-regen25_btn = tk.Button(files_frame, text=f"Regenerate model csv files", command=rebuild_model_csv_files)
-regen25_btn.pack(side='right')
+regen25_btn = tk.Button(res_frame, text=f"Regenerate resource csv files", command=rebuild_resource_csv_files)
+regen25_btn.pack(side='bottom')
 
 ############################################################
 # Log output widget

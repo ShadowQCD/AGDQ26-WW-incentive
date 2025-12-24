@@ -3,6 +3,6 @@ __pycache__/
 .ipynb_checkpoints/
 scratch/
 scratch.ipynb
-model_files/custom/
-model_files/vanilla/
+res_files/custom/
+res_files/vanilla/
 payload_mods_templates/

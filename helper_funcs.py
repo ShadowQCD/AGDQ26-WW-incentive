@@ -1,5 +1,6 @@
 from keystone import Ks, KsError, KS_ARCH_PPC, KS_MODE_PPC64
 import re
+import picto_functions as picto
 
 #######################################################################################
 # Register dictionary at start of ACE payload
@@ -561,6 +562,14 @@ def create_csv_for_file_dump(addr_target, binfile, csvfile, r_min = 14, r_addr =
             PAD_word = get_ASM_encoding(PAD_instruc, addr=PAD_addr, ks=ks, output_type='hex')
             f.write(f"0x{PAD_addr:08X}, 0x{PAD_word}\n")
             #print(f"0x{PAD_addr:08X}, {PAD_instruc}")
+
+
+#######################################################################################
+# Convert a png to a csv that makes it a pictograph in game 3 (7904 bytes)
+#######################################################################################
+def png_to_csv(png_file, csv_file='photo.csv', addr=0x803B5040):
+    cmpr_file = picto.image_to_CMPR(png_file, out_file="photo.cmpr", width=152, height=104, resize_if_needed=True)
+    create_csv_for_file_dump(addr, cmpr_file, csv_file, r_min = 14, r_addr = 8, ks=None)
 
 
 #######################################################################################
