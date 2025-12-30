@@ -67,7 +67,7 @@
 8033140C:   00000000                    # ZPos
 
 80331410:   00000000                    # XRot, YRot
-80331414:   2100                        # ZRot used by ItemID (Tuner) & "Open Switch"
+80331414:   9F00                        # ZRot used by ItemID (Tuner) & "Open Switch"
 
 #############################################################################
 # Put injection hook in d_stage::dStage_roomControl_c::loadRoom
