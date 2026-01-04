@@ -43,10 +43,9 @@ phase_3_csv_path    = csv_folder / phase_3_csv_file
 
 res_tuples = [  ('Game', res_folder/"hboots_water.bdl", 0x803f0f28) ,
                 #('Game', res_folder/"hboots_vanilla.bdl", 0x803f0f28) ,
-                #(0x80332000, res_folder/"hboots_vanilla.bdl") ,
                 #('Game', res_folder/"hboots_Toad.bdl", 0x803f0f28) ,
                 #(0x80332000, res_folder/"hboots_Toad.bdl") ,
-                #(0x81578CC0, res_folder/"custom_photo.png") ,
+                (0x81578CC0, res_folder/"custom_photo.png") ,
                 #(0x803318C0, res_folder/"iron_boots"/"JKRMemArchive.bin") ,
                 #(0x80331940, res_folder/"iron_boots"/"Vboot.rarc") ,
                       ]
@@ -160,25 +159,15 @@ res_vars = {}
 
 def rebuild_phase2_bin():
     selected_files = [f for f,v in payload_vars.items() if v.get()==1]
-    hboots_warning = False
     log(f"Rebuilding {phase_2_bin_file} with:")
-    for s in selected_files:
-        log(f"  - {s.name}")
-        if 'hboots_manager' in s.stem:
-            hboots_warning = True
-
     HF.phase2_create_bin_from_files(
         selected_files,
         phase_2_bin_file,
         #input_type="hex",
         ks=ks
     )
-    
     HF.phase2_bin_to_csv(phase_2_bin_file, phase_2_csv_path)
     log(f"{phase_2_bin_file}, {phase_2_csv_file} regenerated.\n")
-
-    if hboots_warning:
-        log("Note: hboots_manager requires an hboots .bdl file to be included in phase 2.5\n")
 
 
 ########################################################################
