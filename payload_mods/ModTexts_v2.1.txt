@@ -213,9 +213,18 @@
 
 #############################################################################
 # DX Picto/CAMERA2 Menu Text (IRL picto)
+# Strange Picto Box
+
+80E0E488:   61670053
+80E0E48C:   7472616E
+80E0E490:   67652050
+80E0E494:   6963746F
+80E0E498:   20426F78
+80E0E49C:   0065726F
 
 #############################################################################
 # DX Picto/CAMERA2 menu item description (IRL picto)
+
 
 
 
@@ -259,6 +268,11 @@
 
 
 # d_item::item_func_salvage_item1 (Legendary Picto)
+# Remove Endless Night, Despawn Ghost Ships
 
-
-## 800C4B98:
+800C4B98: lis   r25, 0x803C
+800C4B9C: li    r26, 0x9C
+800C4BA0: stb   r26, 0x5236(r25)
+800C4BA4: li    r26, 0x03
+800C4BA8: stb   r26, 0x52B4(r25)
+800C4BAC: blr
