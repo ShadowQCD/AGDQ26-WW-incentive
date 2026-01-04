@@ -566,6 +566,8 @@ def image_to_CMPR(png_file, out_file=None, width=152, height=104, resize_if_need
                 block_bytes = encode_cmpr_block(block_pixels)
                 data_bytes.extend(block_bytes)
 
+    if out_file == None:
+        return bytes(data_bytes)
     # Write output as hex string (uppercase) to match existing reader expectations
     # hexstr = data_bytes.hex().upper()
     # with open(out_file, 'w') as f:

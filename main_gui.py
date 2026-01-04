@@ -41,10 +41,14 @@ phase_1_csv_path    = csv_folder / phase_1_csv_file
 phase_2_csv_path    = csv_folder / phase_2_csv_file
 phase_3_csv_path    = csv_folder / phase_3_csv_file
 
-res_addr_file_pairs = [ (0x80332000, res_folder/"hboots_Toad.bdl") ,
-                        (0x81578CC0, res_folder/"custom_photo.png") ,
-                        #(0x803318C0, res_folder/"iron_boots"/"JKRMemArchive.bin") ,
-                        #(0x80331940, res_folder/"iron_boots"/"Vboot.rarc") ,
+res_tuples = [  ('Game', res_folder/"hboots_water.bdl", 0x803f0f28) ,
+                #('Game', res_folder/"hboots_vanilla.bdl", 0x803f0f28) ,
+                #(0x80332000, res_folder/"hboots_vanilla.bdl") ,
+                #('Game', res_folder/"hboots_Toad.bdl", 0x803f0f28) ,
+                #(0x80332000, res_folder/"hboots_Toad.bdl") ,
+                #(0x81578CC0, res_folder/"custom_photo.png") ,
+                #(0x803318C0, res_folder/"iron_boots"/"JKRMemArchive.bin") ,
+                #(0x80331940, res_folder/"iron_boots"/"Vboot.rarc") ,
                       ]
 
 # Set number of times to perform each DME write in each phase
@@ -192,19 +196,30 @@ def rebuild_phase1_bin():
 #############################################################################
 def rebuild_resource_csv_files():
     # Only regenerate CSVs for resource files that are selected via checkboxes
-    selected_pairs = [(addr, f) for addr, f in res_addr_file_pairs if res_vars.get(f, tk.IntVar()).get() == 1]
-    if not selected_pairs:
+    selected_tuples = [tup for tup in res_tuples if res_vars.get(tup[1], tk.IntVar()).get() == 1]
+    if not selected_tuples:
         log("No resource files selected for regeneration.\n")
         return
 
-    for addr, f in selected_pairs:
+    for tup in selected_tuples:
+        f = tup[1]
         csv_filename = f.stem + ".csv"
         csv_path = csv_folder / csv_filename
         if f.suffix == '.png':
+            addr = tup[0]
             cmpr_data = picto.image_to_CMPR(f, out_file="photo.cmpr", width=152, height=104, resize_if_needed=True)
             HF.create_csv_for_file_dump(addr, cmpr_data, csv_path, r_min = 17, r_addr = 16, ks=None)
-        else:
+        elif isinstance(tup[0], str):
+            heapName = tup[0]
+            ppData = tup[2]
+            if 'hboots' in f.stem:
+                HF.create_csv_for_hboots_dump(heapName, f, ppData, csv_path, r_min = 17, r_addr = 16, ks=None)
+        elif isinstance(tup[0], int):
+            addr = tup[0]
             HF.create_csv_for_file_dump(addr, f, csv_path, r_min = 17, r_addr = 16, ks=None)
+        else:
+            log(f"Unknown resource tuple {tup}")
+            return
         log(f"{csv_filename} regenerated.")
     log(' ')
 
@@ -264,12 +279,13 @@ def run_phase_2():
 
 def run_phase_25():
     log(f"Running Phase 2.5... (Nreps={phase_25_Nreps})")
-    selected_pairs = [(addr, f) for addr, f in res_addr_file_pairs if res_vars.get(f, tk.IntVar()).get() == 1]
-    if not selected_pairs:
+    selected_tuples = [tup for tup in res_tuples if res_vars.get(tup[1], tk.IntVar()).get() == 1]
+    if not selected_tuples:
         log("No resource files selected for Phase 2.5. Nothing to write.\n")
         return
 
-    for addr, f in selected_pairs:
+    for tup in selected_tuples:
+        f = tup[1]
         csv_filename = f.stem + ".csv"
         csv_path = csv_folder / csv_filename
         my_DME_writes_from_csv(csv_path, Nreps=phase_25_Nreps)
@@ -352,8 +368,8 @@ regen_btn.pack(pady=5)
 #####################################
 # 'Regenerate phase1.bin' button
 #####################################
-# regen1_btn = tk.Button(files_frame, text=f"Regenerate {phase_1_bin_file}", command=rebuild_phase1_bin)
-# regen1_btn.pack(side='right', padx=5)
+regen1_btn = tk.Button(files_frame, text=f"Regenerate {phase_1_bin_file}", command=rebuild_phase1_bin)
+regen1_btn.pack(side='right', padx=5)
 
 
 ############################################################
@@ -363,7 +379,8 @@ res_frame = tk.LabelFrame(container_frame, text="Resource Files (Phase 2.5)", pa
 res_frame.pack(side="left", padx=5, pady=0, fill="both")
 
 # Build a checkbox for each resource file defined in res_addr_file_pairs
-for addr, f in res_addr_file_pairs:
+for tup in res_tuples:
+    f = tup[1]
     var = tk.IntVar(value=1)
     res_vars[f] = var
     tk.Checkbutton(res_frame, text=f.name, variable=var,

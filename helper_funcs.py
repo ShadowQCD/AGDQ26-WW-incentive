@@ -353,8 +353,8 @@ def phase1_get_PAD2_instrucs_for_writes(addr_instruc_pairs, r12=0x803F0F3C, ks=N
 
 def phase1_final_PAD2_instrucs():
     PAD2_instrucs = [
-        'subi r3, 0xC (r12)',
-        'li r4, 0x40',
+        'subi r3, r12, 0xC',
+        'li r4, 0x70',
         'bl -> 0x80003374',
         'b -> 0x803F0F50'
     ]
@@ -500,20 +500,20 @@ def phase2_bin_to_csv(binfile, csvfile):
         
 
 #######################################################################################
-# Dump from file (e.g. for water boots .arc)
+# Dump from file to specific target address
 #######################################################################################
-def dump_bytes_PAD_instrucs(addr_target, input_bytes, r_min = 14, r_addr = 8):
-    Nbytes = len(input_bytes)
+def dump_bytes_PAD_instrucs(addr_target, data_bytes, r_min = 14, r_addr = 8):
+    Nbytes = len(data_bytes)
     if Nbytes % 4 != 0:
         raise ValueError("WARNING: Can't dump fractional number of words, should edit function")
-    words = [input_bytes[i:i+4].hex().upper() for i in range(0, len(input_bytes), 4)]
+    words = [data_bytes[i:i+4].hex().upper() for i in range(0, len(data_bytes), 4)]
     Nwords = len(words)
     
     #addr_base, addr_off = split_addr(addr_target)
     addr_hex = f'{addr_target:08X}'
 
     PAD_instrucs = [f"lis {r_addr}, 0x{addr_hex[:4]}", 
-                    f"ori {r_addr}, {r_addr}, 0x{addr_hex[4:]}"]
+                    f"ori {r_addr}, {r_addr}, 0x{addr_hex[4:]}"]    # set r_addr
 
     A_min = max(r_min, 32 - Nwords)    # in case there's fewer than 18 words (72 bytes) in the file
     A = A_min
@@ -563,13 +563,137 @@ def create_csv_for_file_dump(addr_target, binfile, csvfile, r_min = 14, r_addr =
             f.write(f"0x{PAD_addr:08X}, 0x{PAD_word}\n")
             #print(f"0x{PAD_addr:08X}, {PAD_instruc}")
 
+####################################################################################################
+# Allocate memory for data in a specified heap, then dump hboots data from .bdl file to that memory
+####################################################################################################
+def hboots_dump_PAD_instrucs(heapName, data_bytes, ppData, r_min = 17, r_addr = 16):
+    Nbytes = len(data_bytes)
+    if Nbytes % 4 != 0:
+        raise ValueError("WARNING: Can't dump fractional number of words, should edit function")
+    words = [data_bytes[i:i+4].hex().upper() for i in range(0, len(data_bytes), 4)]
+    Nwords = len(words)
+
+    # Get ppHeap
+    heap_dict = {'Game':0x803F6920, 'Zelda':0x803F6928, 'Command':0x803F6930, 'Archive':0x803F6938}
+    ppHeap = heap_dict[heapName]
+    ppHeap_base, ppHeap_off = split_addr(ppHeap)
+    #ppHeap_hex = f'{ppHeap:08X}'
+
+    # Get total allocation size = Nbytes (data) + 228 (J3DModelData); could potentially add 2*264 (right+left J3DModel)
+    alloc_size = Nbytes #+ 228
+    
+    size_hex = f'{alloc_size:08X}'
+    Nbytes_hex = f'{Nbytes:08X}'
+    ppData_hex = f'{ppData:08X}'
+    ppModelData_hex = f'{ppData+4:08X}'
+
+    ###################################
+    # Allocate memory in heapName
+    PAD_instrucs = []
+    
+    # Set r3 = total allocation size = Nbytes (data) + 228 (J3DModelData)
+    PAD_instrucs += [f"lis r23, 0x{size_hex[:4]}" ,
+                    f"ori r23, r23, 0x{size_hex[4:]}"]
+
+    # Set r4 = 0x20 (alignment amount + head vs tail)
+    PAD_instrucs += [f"li r24, 0x20"]
+
+    # Set r5 = pHeap
+    PAD_instrucs += [f"lis r25, 0x{ppHeap_base:04X}", 
+                    f"lwz r25, {ppHeap_off} (r25)"]
+    
+    # Set r_addr = pTarget = JKRHeap::alloc(Nbytes, 4, pHeap)
+    PAD_instrucs += ["bl -> 0x803F0F74" ,    # allocation code set up in phase 1
+                     f'mr {r_addr}, r26' ]
+    
+    # Store pData = pTarget at ppData
+    PAD_instrucs += [f'stw r26, {ppData-0x803F0F3C} (r12)']
+
+    # Store pModelData = pData + Nbytes at ppData+4              
+    PAD_instrucs += [f'lis r23, 0x{Nbytes_hex[:4]}' ,
+                     f'ori r23, r23, 0x{Nbytes_hex[4:]}' ,
+                     f'add r27, r26, r23' ,
+                     f'stw r27, {ppData+4 - 0x803F0F3C} (r12)']
+    
+    #return PAD_instrucs
+    
+    ###################################
+    # Do hboots.bdl data dump
+    A_min = max(r_min, 32 - Nwords)    # in case there's fewer than 18 words (72 bytes) in the file
+    A = A_min
+    for n, word in enumerate(words):
+        PAD_instrucs += [f"lis r{A}, 0x{word[:4]}",
+                         f"ori r{A}, r{A}, 0x{word[4:]}"]
+        A += 1
+        if A == 32:
+            PAD_instrucs += [f"stmw r{A_min}, 0 ({r_addr})"] # needs to be controller 4
+            
+            addr_increase = (32-A_min)*4
+            PAD_instrucs += [f"addi {r_addr}, {r_addr}, {addr_increase}"]
+            Nwords_left = Nwords - (n + 1)
+            if Nwords_left == 0:
+                #return PAD_instrucs
+                break
+            A_min = max(r_min, 32 - Nwords_left)
+            A = A_min
+    if Nwords_left != 0:
+        raise ValueError("Error in register indexing")
+    
+    #return PAD_instrucs
+    ###################################
+    # Create J3DModelData with hboots_manager mod
+    # Note: Can't directly run code here with PAD_instrucs due to r3 & r4 use in caching
+    PAD_instrucs += ['bl -> 0x803312B0']
+    
+    return PAD_instrucs
+
+
+def create_csv_for_hboots_dump(heapName, binfile, ppData, csvfile, r_min = 17, r_addr = 16, ks=None):
+    with open(binfile, 'rb') as f:
+        data_bytes = f.read()
+    PAD_instrucs = hboots_dump_PAD_instrucs(heapName, data_bytes, ppData, r_min = r_min, r_addr = r_addr)
+    PADs = [0x803F0F34 + 8*n for n in range(4)]
+    nop = "0x60000000"
+    with open(csvfile,'w') as f:
+        n = 0
+        for PAD_instruc in PAD_instrucs:
+            if PAD_instruc[:4] == 'stmw':
+                for j in range(n,3):
+                    f.write(f"0x{PADs[j]:08X}, {nop}\n")
+                    #print(f"0x{PADs[j]:08X}, nop")
+                PAD_addr = PADs[3]
+                PAD_word = get_ASM_encoding(PAD_instruc, addr=PAD_addr, ks=ks, output_type='hex')
+                f.write(f"0x{PAD_addr:08X}, 0x{PAD_word}\n")
+                for j in range(4):
+                    f.write(f"0x{PADs[j]:08X}, {nop}\n")
+                    #print(f"0x{PADs[j]:08X}, nop")
+                n = 0
+            else:
+                PAD_addr = PADs[n]
+                n = (n+1) % 4
+            PAD_word = get_ASM_encoding(PAD_instruc, addr=PAD_addr, ks=ks, output_type='hex')
+            f.write(f"0x{PAD_addr:08X}, 0x{PAD_word}\n")
+            #print(f"0x{PAD_addr:08X}, {PAD_instruc}")
+        # Flush any straggler instructions and nop everything
+        for k in range(4):
+            j = (n+k) % 4
+            f.write(f"0x{PADs[j]:08X}, {nop}\n")
+
+
 
 #######################################################################################
 # Convert a png to a csv that makes it a pictograph in game 3 (7904 bytes)
 #######################################################################################
-def png_to_csv(png_file, csv_file='photo.csv', addr=0x803B5040):
+def png_to_csv(png_file, csv_file='photo.csv', r_min=17, r_addr=16, ks=None):
     cmpr_file = picto.image_to_CMPR(png_file, out_file="photo.cmpr", width=152, height=104, resize_if_needed=True)
-    create_csv_for_file_dump(addr, cmpr_file, csv_file, r_min = 14, r_addr = 8, ks=None)
+    
+    ppBuffer = 0x803F68CC
+    PAD_instrucs = []
+
+    PAD_instrucs += [f'lis {r_addr}, 0x803F',
+                     f'lwz {r_addr}, 0x68CC ({r_addr})',  
+                     f'']
+    #create_csv_for_file_dump(ppBuffer**, cmpr_file, csv_file, r_min = r_min, r_addr = r_addr, ks=ks)
 
 
 #######################################################################################

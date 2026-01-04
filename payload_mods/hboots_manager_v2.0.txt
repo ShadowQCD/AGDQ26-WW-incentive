@@ -1,0 +1,94 @@
+#####################################################################################
+# Use custom hboots.bdl model for Water Boots
+#####################################################################################
+
+# Phase 2.5 allocates memory & injects hboots.bdl data, then does bl -> 0x803312B0
+
+803312B0:  mflr r22                # save LR for return branch
+
+# Grab pCurrentHeap & save it for later
+803312B4:   bl -> 0x80011DD4    # r3 = pCurrentHeap
+803312B8:   mr r21, r3
+
+# Set JKRHeap::sCurrentHeap to the Game heap
+803312BC:   lis r20, 0x803F
+803312C0:   lwz r3, 0x6920 (r20)    # r3 = pGameHeap
+803312C4:   bl -> 0x802B03F8        # JKRHeap::becomeCurrentHeap(pGameHeap)
+
+# pData = pointer to custom hboots.bdl (the game classifies it as a BDLC file)
+803312C8:   lwz r3, 0x0F28 (r20)        # NOTE: MUST MATCH ADDRESS OF CUSTOM hboots.bdl
+
+# Create J3DModelData for custom hboots
+803312CC:   li r4, 0x2020           # loadArgs (always 0x2020 for BDLC files, will need to check if we use anything else)
+803312D0:   bl -> 0x802FB94C        # r3 = pModelDataSrc = J3DModelLoaderDataBase::loadBinaryDisplayList(const void* pData, 0x2020)
+
+# Apply shaders/textures to J3DModelData? Not positive what setToonTex does
+803312D4:   mr r25, r3              # save pModelDataSrc for later (next line overwrites r3)
+803312D8:   bl -> 0x8006D990        # d_resorce::setToonTex(J3DModelData *pModelDataSrc)
+
+# # Copy J3DModelData to the desired memory block (allocated during phase 2.5)
+# lwz r3, 0x0F2C (r20)        # r3 = pModelDataTgt    (NOTE: MUST MATCH ADDRESS USED IN PHASE 2.5)
+# mr r4, r25                  # r4 = pModelDataSrc
+# li r5, 228                  # r5 = 228 (J3DModelData size)
+# bl -> 0x802B0B8C
+
+# Return JKRHeap::sCurrentHeap to what it was initially
+803312DC:   mr r3, r21
+803312E0:   bl -> 0x802B03F8        # JKRHeap::becomeCurrentHeap(pCurrentHeap)
+
+
+#####################################################################################
+# Store pModelData at pResInfo->mpRes + fileID*4 so that it gets used in future
+
+803312E4:   ori r3, r20, 0x62A0     # r3 = pArcName = p('Link') = 0x803F62A0
+803312E8:   lis r4, 0x803E
+803312EC:   ori r4, r4, 0x0BC8      # r4 = pResInfoList = 0x803E0BC8
+803312F0:   li r5, 0x40             # r5 = totalResInfos = 0x40
+803312F4:   bl -> 0x8006F18C        # r3 = pResInfo = getResInfoLoaded(p('Link'), pResInfoList, 0x40)
+
+803312F8:   lwz r3, 0x20 (r3)       # r3 = pResInfo->mpRes
+803312FC:   stw r25, 0xB4 (r3)      # overwrite pHbootsModelData used by pResInfo->mpRes
+
+#####################################################################################
+# Write pModelData at 0x803F0F2C
+80331300:   stw r25, 0x0F2C (r20)
+80331304:   ori r12, r20, 0x0F3C
+
+#####################################################################################
+# Resume PAD_instrucs
+80331308:   mtlr r22
+8033130C:   blr
+
+
+# #####################################################################################
+# #####################################################################################
+# # Put injection hooks into daPy_lk_c::createHeap(daPy_lk_c *this)
+# 80123B74:   bl -> 0x80331300        # bl -> 0x8012A40 (daPy_lk_c::initModel for Link.mpHbootsModelRightFoot)
+# 80123B8C:   bl -> 0x80331300        # bl -> 0x8012A40 (daPy_lk_c::initModel for Link.mpHbootsModelLeftFoot)
+# 
+# #####################################################################################
+# # Begin custom code with these registers:
+# # r27 = pLink
+# # r4 = p(Link.mpHbootsModelXXXXFoot)
+# # r5 = 0x2D         # fileID for hboots.bdl inside Link.arc, not needed
+# # r6 = 0x37221222   # differedDlistFlag (no idea what it does, keeping as is)
+# #####################################################################################
+# 
+# # pModelData = pointer to J3DModelData for custom hboots
+# 80331300:   lis r20, 0x803F
+# 80331304:   lwz r3, 0x0F2C (r20)    # NOTE: MUST MATCH ADDRESS USED IN PHASE 2.5
+# 
+# 80331308:   mflr r22                # save LR for return branch
+# 8033130C:   mr r23, r4              # save p(Link.mpHbootsModelXXXXFoot) for later
+# 
+# # Flags for mDoExt_J3DModel__create(...)
+# 80331310:   li r4, 0                # modelFlag = 0 (copied from vanilla hboots J3DModel)
+# 80331314:   mr r5, r6               # differedDlistFlag = 0x37221222
+# 
+# # Create J3DModel for Link.mpHbootsModelXXXXFoot
+# 80331318:   bl -> 0x80016BB8        # r3 = pModel = m_Do_ext::mDoExt_J3DModel__create(J3DModelData *pModelData, 0, 0x37221222)
+# 8033131C:   stw r3, 0 (r23)         # Link.mpHbootsModelXXXXFoot = pModel
+# 
+# # Return
+# 80331320:   mtlr r22
+# 80331324:   blr

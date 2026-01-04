@@ -1,6 +1,0 @@
-#############################################################################
-# Mirror Shield always shines light
-#############################################################################
-8011D190:   nop  # shield light always on
-
-# 803C4C16:   3E3C # give sword & shield (already included in give_all_items.txt)

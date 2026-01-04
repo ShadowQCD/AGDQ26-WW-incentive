@@ -2,6 +2,9 @@
 # PHASE 1: Set up input detection & cache management for phase 2 (main payload)
 ################################################################################
 
+# 803F0F28:    pData for hboots.bdl
+# 803F0F2C:    pModelData for hboots
+
 # Controller 4 input detection
 803F0F50:   lwz r14, 0x10 (r12)
 803F0F54:   lwz r15, 0x10 (r12)
@@ -9,9 +12,24 @@
 803F0F5C:   beq -> 0x803F0F54       # loop until it does
 
 # Cache management
-803F0F60:   subi r3, 0xC (r12)      
-803F0F64:   li r4, 0x20
+803F0F60:   subi r3, r12, 0x20      
+803F0F64:   li r4, 0x50
 803F0F68:   bl -> 0x80003374        # use in-game function to refresh caches for controller addresses
 
 # Loop back to pad 1
 803F0F6C:   b -> 0x803F0F34         # loop back to controller 1 C/LR data to continue phase 2
+
+
+####################################
+# Allocation helper for data dump
+803F0F74:   mr r21, r12         # hold 0x803F0F3C to put back into r12 later (gets overwritten)
+803F0F78:   mflr r22
+803F0F7C:   mr r3, r23
+803F0F80:   mr r4, r24
+803F0F84:   mr r5, r25
+803F0F88:   bl -> 0x802B0434    # allocate memory
+803F0F8C:   mr r26, r3          # r26 = pData
+803F0F90:   mr r12, r21         # r12 = 0x803F0F3C
+803F0F94:   mtlr r22
+803F0F98:   blr
+
