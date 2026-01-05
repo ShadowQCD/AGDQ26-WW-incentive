@@ -3,40 +3,35 @@
 ########################################################################################
 
 ########################################################################################
-# Create a "wearing water boots" flag
-
-# Put injection hook in daPy_lk_c::procBootsEquip_init 
-801198DC:   b -> 0x80331200        # replaces blr
-
-# Check if the equipped boots are water boots
-80331200:   nop #cmpwi r30, 0x2B
-80331204:   nop #bne -> 0x80331218
-
-# If so, toggle the flag (defined below)
-80331208:   lis r14, 0x8033
-8033120C:   lbz r15, 0x121F (r14)
-80331210:   xori r15, r15, 1        # toggle the flag between 0 and 1
-80331214:   stb r15, 0x121F (r14)
-
-# Resume normal code
-80331218:   blr
+# Create "checkWaterBootsOn" function by copying daPy_lk_c::checkHeavyStateOn(daPy_lk_c *this)
+803311D8:   lis r3, 0x803C
+803311DC:   ori r3, r3, 0xA754    # r3 = ppLink = 0x803CA754
+803311E0:   lwz r3, 0 (r3)        # r3 = pLink
+803311E4:   lwz r3, 0x29C (r3)    # r3 = (Link->parent).mNoResetFlg0
+803311E8:   andis. r3, r3, 0x4200 # checks whether (mNoResetFlg0 & 0x42000000) == 0
+803311EC:   bne -> 0x803311F8
+803311F0:   li r3, 0
+803311F4:   blr
+803311F8:   li r3, 1
+803311FC:   blr
 
 ########################################################################################
-# "Wearing water boots" flag (1 when worn, 0 otherwise)
-8033121C:   00000000
-########################################################################################
+# Disable "heavy walk" animation when wearing boots
+80111F2C:   andis. r0, r0, 0x4000   # normally 0x42000; the 2 is a "wearing iron boots" flag
+
 
 ########################################################################################
 # "Walk on water" logic
 ########################################################################################
 
 # Put injection hook in dBgS_Acch::GroundCheck 
-800A2F7C:   b -> 0x80331220
+800A2F7C:   b -> 0x8033121C
 
 # Check if wearing water boots
-80331220:   lis r14, 0x8033
-80331224:   lbz r14, 0x121F (r14)
-80331228:   cmpwi r14, 1
+8033121C:   mr r14, r3
+80331220:   bl -> 0x803311D8
+80331224:   cmpwi r3, 1
+80331228:   mr r3, r14
 8033122C:   bne -> 0x8033124C
 
 # Check if on water
@@ -56,15 +51,22 @@
 
 ########################################################################################
 # Put injection hook in daPy_lk_c::changeSwimProc
-8013D020:   b -> 0x80331258         # from daPy_lk_c::changeSwimProc
+8013D020:   b -> 0x80331254         # from daPy_lk_c::changeSwimProc
 
 # Constant "sentinel" float value (stored in tmp bits, may relocate)
 803C5E44:   04071987                # tiny positive float, used below
 
+# # Check if wearing water boots
+# 80331258:   lis r14, 0x8033
+# 8033125C:   lbz r14, 0x121F (r14)
+# 80331260:   cmpwi r14, 1
+# 80331264:   bne -> 0x80331288
+
 # Check if wearing water boots
-80331258:   lis r14, 0x8033
-8033125C:   lbz r14, 0x121F (r14)
-80331260:   cmpwi r14, 1
+80331254:   mr r14, r3
+80331258:   bl -> 0x803311D8
+8033125C:   cmpwi r3, 1
+80331260:   mr r3, r14
 80331264:   bne -> 0x80331288
 
 # Manage height (idk what r30 is, should learn to polish collision)

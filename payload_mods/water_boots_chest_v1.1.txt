@@ -40,9 +40,3 @@
 80330FC0:   blr
 
 
-#####################################################################################
-# Disable "heavy walk" animation when wearing boots
-80111F2C:   andis. r0, r0, 0x4000   # normally 0x42000; the 2 is a "wearing iron boots" flag
-
-# Disable iron boots walking sound
-## will find later
