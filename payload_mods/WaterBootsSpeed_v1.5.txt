@@ -2,17 +2,10 @@
 # Modify Water Boots Speed
 ########################################################################################
 
-# daPy_lk_c::procFrontRoll_init
-
-80115328: bl -> 0x803315BC
+# daPy_lk_c::checkNextMode
+8010E948: bl -> 0x803315BC
 
 # Check Water boots on flag
-
-# 803315C4:   lis     r22, 0x8033
-# 803315C8:   ori     r22, r22, 0x121F
-# 803315CC:   lbz     r23, 0(r22)
-# 803315D0:   cmpwi   r23, 0x01
-
 803315BC:   mflr r20
 803315C0:   mr r21, r3
 803315C4:   bl -> 0x803311D8
@@ -23,16 +16,16 @@
 803315D4:   beq ->  0x803315F4
 
 803315D8:   lis     r22, 0x8035
-803315DC:   ori     r22, r22, 0xD3D4
-803315E0:   lis     r23, 0x3F00         # (Default Roll Speed)
+803315DC:   ori     r22, r22, 0xCEEC
+803315E0:   lis     r23, 0x4188         # (Max Max Speed 17)
 803315E8:   stw     r23, 0(r22)
-803315EC:   lfs     f2, 0x001C(r30)
+803315EC:   lfs     f0, 0x18(r3)
 803315F0:   blr
 
 803315F4:   lis     r22, 0x8035
-803315F8:   ori     r22, r22, 0xD3D4 
-803315FC:   lis     r23, 0x42C8         # (WB Roll Speed)
+803315F8:   ori     r22, r22, 0xCEEC 
+803315FC:   lis     r23, 0x4248         # (Max Walk Speed 50)
 80331600:   stw     r23, 0(r22)
-80331604:   lfs     f2, 0x001C(r30)
+80331604:   lfs     f0, 0x18(r3)
 
 80331608:   blr

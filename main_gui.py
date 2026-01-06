@@ -19,19 +19,21 @@ import picto_functions as picto
 # PAD3_addr = 0x803F0F44  # controller 3 C/LR data address
 # PAD4_addr = 0x803F0F4C  # controller 4 C/LR data address
 
-payload_folder      = Path.cwd() / "payload_mods"
-res_folder          = Path.cwd() / "res_files"
-photo_folder        = Path.cwd() / "photos"
+# Folders
+cwd                 = Path.cwd()
+payload_folder      = cwd / "payload_mods"
+res_folder          = cwd / "res_files"
+photo_folder        = cwd / "photos"
+csv_folder          = cwd / "csv_files"
 
-csv_folder          = Path.cwd() / "csv_files"
-
+# Key phase 1 & 2 files
 phase_1_AI_file     = "phase1_addr_instruc_pairs.txt"
 phase_1_bin_file    = "phase1.bin"
 phase_2_bin_file    = "phase2.bin"
 
+# csv filenames
 phase_m1_csv_file   = "phase_m1.csv"
 phase_1_csv_file    = "phase_1.csv"
-#phase_1_csv_file    = "phase_1_old.csv"
 phase_2_csv_file    = "phase_2.csv"
 phase_3_csv_file    = "phase_3.csv"
 #phase_3_csv_file    = "phase_3_hack.csv"
@@ -59,7 +61,7 @@ phase_1_Nreps   = 10    # each DME write in phase 1 has a ~20% chance to occur w
 phase_2_Nreps   = 3     # should only need to be 1, but have been experiencing weird issues
 phase_25_Nreps  = 3     # this is where the real issues have been, maybe stmw timing issues
 phase_3_Nreps   = 3     # should only need to be 1
-photo_Nreps     = 1     # should only need to be 1
+photo_Nreps     = 2     # should only need to be 1
 
 # GUI color scheme
 BG = "#2e2e2e"
@@ -368,16 +370,13 @@ phase_frame.pack(padx=10, pady=10, fill="x")
 btn_m1  = tk.Button(phase_frame, text="Phase -1: Set PADs 2-4",   command=run_phase_m1)
 #btn_0   = tk.Button(phase_frame, text="Phase 0: Trigger ACE", command=run_phase_0_hack)
 btn_0   = tk.Button(phase_frame, text="Phase 0: Trigger ACE", state="disabled")
-#btn_05  = tk.Button(phase_frame, text="Phase 0.5", command=run_phase_05)
 btn_1   = tk.Button(phase_frame, text="Phase 1: Setup",   command=run_phase_1)
-#btn_15  = tk.Button(phase_frame, text="Phase 1.5", command=run_phase_15)
 btn_2   = tk.Button(phase_frame, text="Phase 2: Main Payload",   command=run_phase_2)
 btn_25   = tk.Button(phase_frame, text="Phase 2.5: Resource Data",   command=run_phase_25)
 btn_3   = tk.Button(phase_frame, text="Phase 3: Resume Game",   command=run_phase_3)
 #btn_nops = tk.Button(phase_frame, text="Nop PADs 2-4",   command=nop_controllers)
 btn_photo = tk.Button(phase_frame, text="Upload Photo to Buffer",   command=upload_photo)
 
-#for b in (btn_m1, btn_05, btn_1, btn_15, btn_2, btn_3):
 #for b in (btn_m1, btn_0, btn_1, btn_2, btn_25, btn_3, btn_nops, btn_photo):
 for b in (btn_m1, btn_0, btn_1, btn_2, btn_25, btn_3, btn_photo):
     b.pack(side="left", padx=5)

@@ -1,0 +1,16 @@
+########################################################################################
+# Create Water Particles when wearing Water Boots
+########################################################################################
+
+# dPa_control_c::checkAtrCodeEffect
+
+8007DA5C:   b ->  0x80331680
+
+80331680:   lis r20, 0x803C
+80331684:   ori r20, r20, 0xA754      # r3 = ppLink = 0x803CA754
+80331688:   lwz r20, 0 (r20)          # r3 = pLink
+8033168C:   lwz r20, 0x29C (r20)      # r3 = (Link->parent).mNoResetFlg0
+80331690:   andis. r20, r20, 0x4200   # checks whether (mNoResetFlg0 & 0x42000000) == 0
+80331694:   bne -> 0x8033169C
+80331698:   b ->   0x8007DA68
+8033169C:   b ->   0x8007DA60
