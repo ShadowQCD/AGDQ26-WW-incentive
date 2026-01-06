@@ -693,15 +693,15 @@ def create_csv_for_hboots_dump(heapName, binfile, ppData, csvfile, r_min = 17, r
 #######################################################################################
 # Convert a png to a csv that makes it a pictograph in game (7904 bytes)
 #######################################################################################
-def live_photo_dump_bytes_PAD_instrucs(CMPR_bytes, Nslices=13, r_min = 19, r_addr = 18, r_base=17, r_save=16):
+def live_photo_dump_bytes_PAD_instrucs(CMPR_bytes, Nrefreshes=13, r_min = 19, r_addr = 18, r_base=17, r_save=16):
     Nbytes = len(CMPR_bytes)
     if Nbytes % 4 != 0:
         raise ValueError("WARNING: Can't dump fractional number of words, should edit function")
     words = [CMPR_bytes[i:i+4].hex().upper() for i in range(0, len(CMPR_bytes), 4)]
     Nwords = len(words)
 
-    Nwords_per_slice = 247 // Nslices
-    if Nslices * Nwords_per_slice != 247:
+    Nwords_per_refresh = 247 // Nrefreshes
+    if Nrefreshes * Nwords_per_refresh != 247:
         raise ValueError("Nslices needs to be a factor of 247=13*19")
     
     byte0 = CMPR_bytes[0] ^ 8   # flip lowest red bit after each draw update
@@ -735,7 +735,7 @@ def live_photo_dump_bytes_PAD_instrucs(CMPR_bytes, Nslices=13, r_min = 19, r_add
             Nwords_left = Nwords - (n + 1)
             A_min = max(r_min, 32 - Nwords_left)
             A = A_min
-        if (n+1) % Nwords_per_slice == 0:
+        if (n+1) % Nwords_per_refresh == 0:
             PAD_instrucs += [
                              f"li r10, {byte0}" ,
                              f"stb r10, 0 ({r_base})" ,  # change 1st CMPR byte to trigger redraw
@@ -755,11 +755,11 @@ def live_photo_dump_bytes_PAD_instrucs(CMPR_bytes, Nslices=13, r_min = 19, r_add
     return PAD_instrucs
 
 # Create csv for CMPR data dump, staggered to only do so many bytes at time for live image update
-def create_csv_for_photo_dump(CMPR_bytes, csvfile, r_min = 19, r_addr = 18, r_base = 17, r_save = 16, ks=None):
+def create_csv_for_photo_dump(CMPR_bytes, csvfile, Nrefreshes=13, r_min = 19, r_addr = 18, r_base = 17, r_save = 16, ks=None):
     # with open(CMPRfile, 'rb') as f:
     #     CMPR_bytes = f.read()
     
-    PAD_instrucs = live_photo_dump_bytes_PAD_instrucs(CMPR_bytes, r_min=r_min, r_addr=r_addr, r_base=r_base, r_save=r_save)
+    PAD_instrucs = live_photo_dump_bytes_PAD_instrucs(CMPR_bytes, Nrefreshes=Nrefreshes, r_min=r_min, r_addr=r_addr, r_base=r_base, r_save=r_save)
     PADs = [0x803F0F34 + 8*n for n in range(4)]
     nop = "0x60000000"
     #branch = "0x803F0F4C, 0x4BC15514\n"   # b -> 0x80006460 to do a frame update

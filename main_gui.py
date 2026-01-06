@@ -43,9 +43,9 @@ phase_2_csv_path    = csv_folder / phase_2_csv_file
 phase_3_csv_path    = csv_folder / phase_3_csv_file
 photo_csv_path      = csv_folder / photo_csv_file
 
-res_tuples = [  #('Game', res_folder/"hboots_water.bdl", 0x803f0f28) ,
+res_tuples = [  ('Game', res_folder/"hboots_water.bdl", 0x803f0f28) ,
                 #('Game', res_folder/"hboots_vanilla.bdl", 0x803f0f28) ,
-                ('Game', res_folder/"hboots_Toad.bdl", 0x803f0f28) ,
+                #('Game', res_folder/"hboots_Toad.bdl", 0x803f0f28) ,
                 #(0x80332000, res_folder/"hboots_Toad.bdl") ,
                 #(0x803318C0, res_folder/"iron_boots"/"JKRMemArchive.bin") ,
                 #(0x80331940, res_folder/"iron_boots"/"Vboot.rarc") ,
@@ -170,7 +170,7 @@ photo_files = sorted(photo_folder.glob('*.png'))
 
 def rebuild_phase2_bin():
     selected_files = [f for f,v in payload_vars.items() if v.get()==1]
-    log(f"Rebuilding {phase_2_bin_file}...")
+    #log(f"Rebuilding {phase_2_bin_file}...")
     HF.phase2_create_bin_from_files(
         selected_files,
         phase_2_bin_file,
@@ -208,7 +208,7 @@ def rebuild_resource_csv_files():
         if f.suffix == '.png':
             #addr = tup[0]
             cmpr_data = picto.image_to_CMPR(f, out_file=None, width=152, height=104, resize_if_needed=True)
-            HF.create_csv_for_photo_dump(cmpr_data, csv_path, r_min = 18, r_addr = 17, r_base = 16, ks=ks)
+            HF.create_csv_for_photo_dump(cmpr_data, csv_path, Nrefreshes=13, r_min = 19, r_addr = 18, r_base = 17, r_save=16, ks=ks)
             #HF.create_csv_for_file_dump(addr, cmpr_data, csv_path, r_min = 17, r_addr = 16, ks=None)
         elif isinstance(tup[0], str):
             heapName = tup[0]
@@ -385,11 +385,12 @@ btn_1   = tk.Button(phase_frame, text="Phase 1: Setup",   command=run_phase_1)
 btn_2   = tk.Button(phase_frame, text="Phase 2: Main Payload",   command=run_phase_2)
 btn_25   = tk.Button(phase_frame, text="Phase 2.5: Resource Data",   command=run_phase_25)
 btn_3   = tk.Button(phase_frame, text="Phase 3: Resume Game",   command=run_phase_3)
-btn_nops = tk.Button(phase_frame, text="Nop PADs 2-4",   command=nop_controllers)
+#btn_nops = tk.Button(phase_frame, text="Nop PADs 2-4",   command=nop_controllers)
 btn_photo = tk.Button(phase_frame, text="Upload Photo to Buffer",   command=upload_photo)
 
 #for b in (btn_m1, btn_05, btn_1, btn_15, btn_2, btn_3):
-for b in (btn_m1, btn_0, btn_1, btn_2, btn_25, btn_3, btn_nops, btn_photo):
+#for b in (btn_m1, btn_0, btn_1, btn_2, btn_25, btn_3, btn_nops, btn_photo):
+for b in (btn_m1, btn_0, btn_1, btn_2, btn_25, btn_3, btn_photo):
     b.pack(side="left", padx=5)
 
 
