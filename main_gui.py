@@ -21,9 +21,9 @@ import picto_functions as picto
 
 payload_folder      = Path.cwd() / "payload_mods"
 res_folder          = Path.cwd() / "res_files"
+photo_folder        = Path.cwd() / "photos"
 
 csv_folder          = Path.cwd() / "csv_files"
-res_csv_folder      = Path.cwd() / "res_csv_files"
 
 phase_1_AI_file     = "phase1_addr_instruc_pairs.txt"
 phase_1_bin_file    = "phase1.bin"
@@ -35,20 +35,22 @@ phase_1_csv_file    = "phase_1.csv"
 phase_2_csv_file    = "phase_2.csv"
 phase_3_csv_file    = "phase_3.csv"
 #phase_3_csv_file    = "phase_3_hack.csv"
+photo_csv_file      = "upload_photo.csv"
 
 phase_m1_csv_path   = csv_folder / phase_m1_csv_file
 phase_1_csv_path    = csv_folder / phase_1_csv_file
 phase_2_csv_path    = csv_folder / phase_2_csv_file
 phase_3_csv_path    = csv_folder / phase_3_csv_file
+photo_csv_path      = csv_folder / photo_csv_file
 
-res_tuples = [  ('Game', res_folder/"hboots_water.bdl", 0x803f0f28) ,
+res_tuples = [  #('Game', res_folder/"hboots_water.bdl", 0x803f0f28) ,
                 #('Game', res_folder/"hboots_vanilla.bdl", 0x803f0f28) ,
-                #('Game', res_folder/"hboots_Toad.bdl", 0x803f0f28) ,
+                ('Game', res_folder/"hboots_Toad.bdl", 0x803f0f28) ,
                 #(0x80332000, res_folder/"hboots_Toad.bdl") ,
-                (0x81578CC0, res_folder/"custom_photo.png") ,
                 #(0x803318C0, res_folder/"iron_boots"/"JKRMemArchive.bin") ,
                 #(0x80331940, res_folder/"iron_boots"/"Vboot.rarc") ,
-                      ]
+             ]
+
 
 # Set number of times to perform each DME write in each phase
 phase_m1_Nreps  = 3     # should only need to be 1
@@ -56,6 +58,7 @@ phase_1_Nreps   = 10    # each DME write in phase 1 has a ~20% chance to occur w
 phase_2_Nreps   = 3     # should only need to be 1, but have been experiencing weird issues
 phase_25_Nreps  = 3     # this is where the real issues have been, maybe stmw timing issues
 phase_3_Nreps   = 3     # should only need to be 1
+photo_Nreps     = 3     # should only need to be 1
 
 # GUI color scheme
 BG = "#2e2e2e"
@@ -99,6 +102,12 @@ def my_DME_writes_from_csv(csv_path, Nreps=1):
         full_log = False # (Nwords < 100)
         t0 = time()
         for n, line in enumerate(lines):
+            # if n == 42:
+            #     break
+            if line[:4] == 'WAIT':
+                sleep(0.034)
+                #print('Progress')
+                continue
             PAD_addr, word = line.strip().replace(' ','').split(",")
             my_DME_write(PAD_addr, word, Nreps=Nreps, showlog=full_log)
             
@@ -156,10 +165,12 @@ def hook_to_dolphin():
 payload_vars = {}
 payload_files = sorted(payload_folder.iterdir())
 res_vars = {}
+photo_vars = {}
+photo_files = sorted(photo_folder.glob('*.png'))
 
 def rebuild_phase2_bin():
     selected_files = [f for f,v in payload_vars.items() if v.get()==1]
-    log(f"Rebuilding {phase_2_bin_file} with:")
+    log(f"Rebuilding {phase_2_bin_file}...")
     HF.phase2_create_bin_from_files(
         selected_files,
         phase_2_bin_file,
@@ -195,20 +206,39 @@ def rebuild_resource_csv_files():
         csv_filename = f.stem + ".csv"
         csv_path = csv_folder / csv_filename
         if f.suffix == '.png':
-            addr = tup[0]
-            cmpr_data = picto.image_to_CMPR(f, out_file="photo.cmpr", width=152, height=104, resize_if_needed=True)
-            HF.create_csv_for_file_dump(addr, cmpr_data, csv_path, r_min = 17, r_addr = 16, ks=None)
+            #addr = tup[0]
+            cmpr_data = picto.image_to_CMPR(f, out_file=None, width=152, height=104, resize_if_needed=True)
+            HF.create_csv_for_photo_dump(cmpr_data, csv_path, r_min = 18, r_addr = 17, r_base = 16, ks=ks)
+            #HF.create_csv_for_file_dump(addr, cmpr_data, csv_path, r_min = 17, r_addr = 16, ks=None)
         elif isinstance(tup[0], str):
             heapName = tup[0]
             ppData = tup[2]
             if 'hboots' in f.stem:
-                HF.create_csv_for_hboots_dump(heapName, f, ppData, csv_path, r_min = 17, r_addr = 16, ks=None)
+                HF.create_csv_for_hboots_dump(heapName, f, ppData, csv_path, r_min = 17, r_addr = 16, ks=ks)
         elif isinstance(tup[0], int):
             addr = tup[0]
-            HF.create_csv_for_file_dump(addr, f, csv_path, r_min = 17, r_addr = 16, ks=None)
+            HF.create_csv_for_file_dump(addr, f, csv_path, r_min = 17, r_addr = 16, ks=ks)
         else:
             log(f"Unknown resource tuple {tup}")
             return
+        log(f"{csv_filename} regenerated.")
+    log(' ')
+
+
+#############################################################################
+# Create photo CSVs from PNG files in photo_folder
+#############################################################################
+def rebuild_photo_csv_files():
+    selected_photos = [f for f,v in photo_vars.items() if v.get() == 1]
+    if not selected_photos:
+        log("No photos selected for regeneration.")
+        return
+
+    for f in selected_photos:
+        csv_filename = f.stem + ".csv"
+        csv_path = csv_folder / csv_filename
+        cmpr_data = picto.image_to_CMPR(f, out_file=None, width=152, height=104, resize_if_needed=True)
+        HF.create_csv_for_photo_dump(cmpr_data, csv_path, r_min = 30, r_addr = 17, r_base = 16, ks=ks)
         log(f"{csv_filename} regenerated.")
     log(' ')
 
@@ -282,12 +312,37 @@ def run_phase_25():
 
 
 #################################################################################################
-# PHASE 3 (old, now included in phase 2): Perform any cleanup (if necessary) and resume gameplay
+# PHASE 3: Perform any cleanup (if necessary) and resume gameplay
 #################################################################################################
 def run_phase_3():
     log(f"Running Phase 3... (Nreps={phase_3_Nreps})")
     my_DME_writes_from_csv(phase_3_csv_path, Nreps=phase_3_Nreps)
     log("Phase 3 complete.\n")
+
+#################################################################################################
+# nop controllers 2-4
+#################################################################################################
+def nop_controllers():
+    log(f"Applying nops... (Nreps={photo_Nreps})")
+    my_DME_writes_from_csv(csv_folder/'nops.csv', Nreps=photo_Nreps)
+    log("nops complete.\n")
+
+#################################################################################################
+# UPLOAD PHOTO: Must be done while a photo is in the buffer (right after taking snapshot in game)
+#################################################################################################
+def upload_photo():
+    selected_photos = [f for f,v in photo_vars.items() if v.get() == 1]
+    if not selected_photos:
+        log("No photos selected for upload.\n")
+        return
+    if len(selected_photos) > 1:
+        log("Multiple photos selected for upload. Please select only one photo at a time.\n")
+        return
+    photo = selected_photos[0]
+    log(f"Uploading photo {photo.name} to buffer... (Nreps={photo_Nreps})")
+    photo_csv_path = csv_folder / (photo.stem + ".csv")
+    my_DME_writes_from_csv(photo_csv_path, Nreps=photo_Nreps)
+    log("Photo upload complete.\n")
 
 
 ############################################################################
@@ -330,9 +385,11 @@ btn_1   = tk.Button(phase_frame, text="Phase 1: Setup",   command=run_phase_1)
 btn_2   = tk.Button(phase_frame, text="Phase 2: Main Payload",   command=run_phase_2)
 btn_25   = tk.Button(phase_frame, text="Phase 2.5: Resource Data",   command=run_phase_25)
 btn_3   = tk.Button(phase_frame, text="Phase 3: Resume Game",   command=run_phase_3)
+btn_nops = tk.Button(phase_frame, text="Nop PADs 2-4",   command=nop_controllers)
+btn_photo = tk.Button(phase_frame, text="Upload Photo to Buffer",   command=upload_photo)
 
 #for b in (btn_m1, btn_05, btn_1, btn_15, btn_2, btn_3):
-for b in (btn_m1, btn_0, btn_1, btn_2, btn_25, btn_3):
+for b in (btn_m1, btn_0, btn_1, btn_2, btn_25, btn_3, btn_nops, btn_photo):
     b.pack(side="left", padx=5)
 
 
@@ -381,6 +438,23 @@ for tup in res_tuples:
 #####################################
 regen25_btn = tk.Button(res_frame, text=f"Regenerate resource csv files", command=rebuild_resource_csv_files)
 regen25_btn.pack(side='bottom')
+
+############################################################
+# Photo selector frame
+############################################################
+photo_frame = tk.LabelFrame(container_frame, text="Photo Files", padx=10, pady=10, bg=BG, fg=FG)
+photo_frame.pack(side="left", padx=5, pady=0, fill="both")
+
+# Build a checkbox for each PNG in `photo_folder`
+for f in photo_files:
+    var = tk.IntVar(value=1)
+    photo_vars[f] = var
+    tk.Checkbutton(photo_frame, text=f.name, variable=var,
+                   bg=BG, fg=FG, selectcolor=BG, activebackground=BG, activeforeground=FG
+                   ).pack(anchor='w')
+
+regen_photo_btn = tk.Button(photo_frame, text=f"Regenerate photo csv files", command=rebuild_photo_csv_files)
+regen_photo_btn.pack(side='bottom')
 
 ############################################################
 # Log output widget

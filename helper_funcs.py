@@ -535,7 +535,7 @@ def dump_bytes_PAD_instrucs(addr_target, data_bytes, r_min = 14, r_addr = 8):
             A = A_min
     raise ValueError("Error in register indexing")
 
-
+# Create csv
 def create_csv_for_file_dump(addr_target, binfile, csvfile, r_min = 14, r_addr = 8, ks=None):
     with open(binfile, 'rb') as f:
         input_bytes = f.read()
@@ -647,7 +647,7 @@ def hboots_dump_PAD_instrucs(heapName, data_bytes, ppData, r_min = 17, r_addr = 
     
     return PAD_instrucs
 
-
+# Create the csv for the hboots.bdl dump + J3DModelData creation
 def create_csv_for_hboots_dump(heapName, binfile, ppData, csvfile, r_min = 17, r_addr = 16, ks=None):
     with open(binfile, 'rb') as f:
         data_bytes = f.read()
@@ -657,7 +657,18 @@ def create_csv_for_hboots_dump(heapName, binfile, ppData, csvfile, r_min = 17, r
     with open(csvfile,'w') as f:
         n = 0
         for PAD_instruc in PAD_instrucs:
-            if PAD_instruc[:4] == 'stmw':
+            if PAD_instruc[:4] in 'stmw':
+                for j in range(n,3):
+                    f.write(f"0x{PADs[j]:08X}, {nop}\n")
+                    #print(f"0x{PADs[j]:08X}, nop")
+                PAD_addr = PADs[3]
+                PAD_word = get_ASM_encoding(PAD_instruc, addr=PAD_addr, ks=ks, output_type='hex')
+                f.write(f"0x{PAD_addr:08X}, 0x{PAD_word}\n")
+                for j in range(4):
+                    f.write(f"0x{PADs[j]:08X}, {nop}\n")
+                    #print(f"0x{PADs[j]:08X}, nop")
+                n = 0
+            elif PAD_instruc[:5] == 'bl ->':
                 for j in range(n,3):
                     f.write(f"0x{PADs[j]:08X}, {nop}\n")
                     #print(f"0x{PADs[j]:08X}, nop")
@@ -671,29 +682,137 @@ def create_csv_for_hboots_dump(heapName, binfile, ppData, csvfile, r_min = 17, r
             else:
                 PAD_addr = PADs[n]
                 n = (n+1) % 4
-            PAD_word = get_ASM_encoding(PAD_instruc, addr=PAD_addr, ks=ks, output_type='hex')
-            f.write(f"0x{PAD_addr:08X}, 0x{PAD_word}\n")
+                PAD_word = get_ASM_encoding(PAD_instruc, addr=PAD_addr, ks=ks, output_type='hex')
+                f.write(f"0x{PAD_addr:08X}, 0x{PAD_word}\n")
             #print(f"0x{PAD_addr:08X}, {PAD_instruc}")
         # Flush any straggler instructions and nop everything
         for k in range(4):
             j = (n+k) % 4
             f.write(f"0x{PADs[j]:08X}, {nop}\n")
 
+#######################################################################################
+# Convert a png to a csv that makes it a pictograph in game (7904 bytes)
+#######################################################################################
+def live_photo_dump_bytes_PAD_instrucs(CMPR_bytes, Nslices=13, r_min = 19, r_addr = 18, r_base=17, r_save=16):
+    Nbytes = len(CMPR_bytes)
+    if Nbytes % 4 != 0:
+        raise ValueError("WARNING: Can't dump fractional number of words, should edit function")
+    words = [CMPR_bytes[i:i+4].hex().upper() for i in range(0, len(CMPR_bytes), 4)]
+    Nwords = len(words)
 
+    Nwords_per_slice = 247 // Nslices
+    if Nslices * Nwords_per_slice != 247:
+        raise ValueError("Nslices needs to be a factor of 247=13*19")
+    
+    byte0 = CMPR_bytes[0] ^ 8   # flip lowest red bit after each draw update
+    
+    PAD_instrucs = []
+    
+    # Initiate controller 2-4 loop
+    PAD_instrucs += ['NOPS',
+                     'WAIT']
+    
+    # Save r31 for vanilla code
+    PAD_instrucs += [f'mr r{r_save}, r31']
 
+    # Set r_addr = r_base = pBufferPhoto (load from ppBufferPhoto = 0x803F68CC)
+    PAD_instrucs += [f'lis {r_base}, 0x803F' ,
+                     f'lwz {r_base}, 0x68CC ({r_base})' ,
+                     f'mr {r_addr}, {r_base}']
+
+    # Do CMPR data dump to pBufferPhoto
+    A_min = max(r_min, 32 - Nwords)    # in case there's fewer than 18 words (72 bytes) in the file
+    A = A_min
+    for n, word in enumerate(words):
+        PAD_instrucs += [f"lis r{A}, 0x{word[:4]}",
+                         f"ori r{A}, r{A}, 0x{word[4:]}"]
+        A += 1
+        if A == 32:
+            addr_increase = (32-A_min)*4
+            PAD_instrucs += [f"stmw r{A_min}, 0 ({r_addr})" , # needs to be controller 4
+                             f"addi {r_addr}, {r_addr}, {addr_increase}"
+                            ]
+            Nwords_left = Nwords - (n + 1)
+            A_min = max(r_min, 32 - Nwords_left)
+            A = A_min
+        if (n+1) % Nwords_per_slice == 0:
+            PAD_instrucs += [
+                             f"li r10, {byte0}" ,
+                             f"stb r10, 0 ({r_base})" ,  # change 1st CMPR byte to trigger redraw
+                             f'mr r31, r{r_save}' ,        # restore r31 for vanilla code
+                             "b -> 0x80006460" ,    # resume vanilla code to advance a frame
+                             'NOPS' ,               # trigger a new controller loop
+                             'WAIT'
+                            ]
+            byte0 ^= 8  # flip lowest red bit of first CMPR byte so a photo redraw gets triggered
+            if Nwords_left == 0:
+                #return PAD_instrucs
+                break
+    if Nwords_left != 0:
+        raise ValueError("Error in register indexing")
+    
+    PAD_instrucs += ["b -> 0x80006460"]
+    return PAD_instrucs
+
+# Create csv for CMPR data dump, staggered to only do so many bytes at time for live image update
+def create_csv_for_photo_dump(CMPR_bytes, csvfile, r_min = 19, r_addr = 18, r_base = 17, r_save = 16, ks=None):
+    # with open(CMPRfile, 'rb') as f:
+    #     CMPR_bytes = f.read()
+    
+    PAD_instrucs = live_photo_dump_bytes_PAD_instrucs(CMPR_bytes, r_min=r_min, r_addr=r_addr, r_base=r_base, r_save=r_save)
+    PADs = [0x803F0F34 + 8*n for n in range(4)]
+    nop = "0x60000000"
+    #branch = "0x803F0F4C, 0x4BC15514\n"   # b -> 0x80006460 to do a frame update
+    with open(csvfile,'w') as f:
+        n = 1
+        for PAD_instruc in PAD_instrucs:
+            if PAD_instruc[:4] == 'stmw':
+                for j in range(n,3):
+                    f.write(f"0x{PADs[j]:08X}, {nop}\n")
+                    #print(f"0x{PADs[j]:08X}, nop")
+                PAD_addr = PADs[3]
+                PAD_word = get_ASM_encoding(PAD_instruc, addr=PAD_addr, ks=ks, output_type='hex')
+                f.write(f"0x{PAD_addr:08X}, 0x{PAD_word}\n")
+                for j in range(1,3):
+                    f.write(f"0x{PADs[j]:08X}, {nop}\n")
+                    #print(f"0x{PADs[j]:08X}, nop")
+                n = 1
+            elif PAD_instruc[:4] == 'b ->':  
+                for j in range(n,3):
+                    f.write(f"0x{PADs[j]:08X}, {nop}\n")
+                PAD_addr = PADs[3]
+                PAD_word = get_ASM_encoding(PAD_instruc, addr=PAD_addr, ks=ks, output_type='hex')
+                f.write(f"0x{PAD_addr:08X}, 0x{PAD_word}\n")   # b -> 0x80006460 to do a frame update
+                n = 1
+            elif PAD_instruc == 'NOPS':
+                for j in range(1,4):
+                    f.write(f"0x{PADs[j]:08X}, {nop}\n")
+                n = 1
+            elif PAD_instruc == 'WAIT':    
+                f.write('WAIT A FRAME\n')
+                n = 1
+            else:
+                PAD_addr = PADs[n]
+                n = max(1, (n+1)%4)
+                PAD_word = get_ASM_encoding(PAD_instruc, addr=PAD_addr, ks=ks, output_type='hex')
+                f.write(f"0x{PAD_addr:08X}, 0x{PAD_word}\n")
+                #print(f"0x{PAD_addr:08X}, {PAD_instruc}")
+        # for j in range(1,3):
+        #     f.write(f"0x{PADs[j]:08X}, {nop}\n")
+        # f.write(branch) #BLEH
 #######################################################################################
 # Convert a png to a csv that makes it a pictograph in game 3 (7904 bytes)
 #######################################################################################
-def png_to_csv(png_file, csv_file='photo.csv', r_min=17, r_addr=16, ks=None):
-    cmpr_file = picto.image_to_CMPR(png_file, out_file="photo.cmpr", width=152, height=104, resize_if_needed=True)
+# def png_to_csv(png_file, csv_file='photo.csv', r_min=17, r_addr=16, ks=None):
+#     cmpr_file = picto.image_to_CMPR(png_file, out_file="photo.cmpr", width=152, height=104, resize_if_needed=True)
     
-    ppBuffer = 0x803F68CC
-    PAD_instrucs = []
+#     ppBuffer = 0x803F68CC
+#     PAD_instrucs = []
 
-    PAD_instrucs += [f'lis {r_addr}, 0x803F',
-                     f'lwz {r_addr}, 0x68CC ({r_addr})',  
-                     f'']
-    #create_csv_for_file_dump(ppBuffer**, cmpr_file, csv_file, r_min = r_min, r_addr = r_addr, ks=ks)
+#     PAD_instrucs += [f'lis {r_addr}, 0x803F',
+#                      f'lwz {r_addr}, 0x68CC ({r_addr})',  
+#                      f'']
+#     #create_csv_for_file_dump(ppBuffer**, cmpr_file, csv_file, r_min = r_min, r_addr = r_addr, ks=ks)
 
 
 #######################################################################################

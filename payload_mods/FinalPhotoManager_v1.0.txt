@@ -1,0 +1,76 @@
+#############################################################################
+# Setup for final photo upload(s) with IRL pictobox
+#############################################################################
+
+# Create 'branch to controller' flag
+80331FFC:   00000000                # use 0x80331FFF as flag (1 for yes, 0 for no)
+
+#############################################################################
+# Custom 'debug' code run each frame
+#############################################################################
+# Put injection hook in m_Do_main::main01()
+8000645C:   bl -> 0x80332000        # replaces bl -> m_Do_main::debug()
+
+
+# Check 'branch to controller' flag
+80332000:   lis r10, 0x8033
+80332004:   lbz r10, 0x1FFF (r10)
+80332008:   cmpwi r10, 1
+8033200C:   beq -> 0x80332014
+80332010:   blr                     # return if flag is 0
+
+#############################################################################
+# Prepare to branch to controller data
+
+# Set r12 = 0x803F0F3C to make use of existing ACE-related code
+80332014:   lis r12, 0x803F
+80332018:   ori r12, r12, 0x0F3C
+
+# Edit setup to only loop controllers 2-4
+8033201C:   lis r10, 0x4BFF
+80332020:   ori r10, r10, 0xFFD0
+80332024:   stw r10, 0x30 (r12)     # at 803F0F6C, replace b -> 0x803F0F3C with b -> 0x803F0F34
+
+# Refresh instruction cache for controller memory block (including 803F0F6C)
+80332028:   mr r3, r12              # start at 803F0F3C (controller 2 C/LR data)
+8033202C:   li r4, 0x34             # goes to 803F0F70 (or 803F0F74, idk don't feel like checking)
+80332030:   bl -> 0x80003374        # invalidate/refresh caches
+
+
+#############################################################################
+# Branch to controller data* (only gets run if flag is 1)
+# *Using b -> 0x803F0F50 means controller data won't get run until controller 4 C/LR data changes
+# Also no point in using a bl, just have the photo dump do b -> 0x80006460
+
+80332034:   b -> 0x803F0F3C
+
+
+
+#############################################################################
+# Have pulling picto set the 'branch to controller' flag to 1
+#############################################################################
+
+# Put injection hook in d_picture_box::dPb_Create
+8022BDA0:   bl -> 0x80332050        # replaces mr r29, r3
+
+80332050:   li r21, 1
+80332054:   lis r20, 0x8033
+80332058:   stb r21, 0x1FFF (r20)   # set the flag to 1
+
+8033205C:   mr r29, r3
+80332060:   blr
+
+
+#############################################################################
+# Have putting away picto set the 'branch to controller' flag to 0
+#############################################################################
+
+# Put injection hook in d_picture_box::dPb_Create
+8022BCA0:   bl -> 0x80332080        # replaces mr r28, r3
+
+80332080:   li r21, 0
+80332084:   lis r20, 0x8033
+80332088:   stb r21, 0x1FFF (r20)   # set the flag to 0
+
+8033208C:   mr r28, r3
+80332090:   blr
