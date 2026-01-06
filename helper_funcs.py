@@ -693,18 +693,18 @@ def create_csv_for_hboots_dump(heapName, binfile, ppData, csvfile, r_min = 17, r
 #######################################################################################
 # Convert a png to a csv that makes it a pictograph in game (7904 bytes)
 #######################################################################################
-def live_photo_dump_bytes_PAD_instrucs(CMPR_bytes, Nrefreshes=13, r_min = 19, r_addr = 18, r_base=17, r_save=16):
+def live_photo_dump_bytes_PAD_instrucs(CMPR_bytes, Nrefreshes=13, r_min=19, r_addr=18, r_base=17, r_save=16):
     Nbytes = len(CMPR_bytes)
     if Nbytes % 4 != 0:
         raise ValueError("WARNING: Can't dump fractional number of words, should edit function")
     words = [CMPR_bytes[i:i+4].hex().upper() for i in range(0, len(CMPR_bytes), 4)]
     Nwords = len(words)
 
-    Nwords_per_refresh = 247 // Nrefreshes
-    if Nrefreshes * Nwords_per_refresh != 247:
-        raise ValueError("Nslices needs to be a factor of 247=13*19")
+    Nwords_per_refresh = 1976 // Nrefreshes
+    if Nrefreshes * Nwords_per_refresh != 1976:
+        raise ValueError("Nrefreshes needs to be a factor of 1,976=13*19*8")
     
-    byte0 = CMPR_bytes[0] ^ 8   # flip lowest red bit after each draw update
+    byte0 = CMPR_bytes[0] ^ 8   # flip lowest red bit of 1st CMPR byte after each draw update
     
     PAD_instrucs = []
     
@@ -723,6 +723,7 @@ def live_photo_dump_bytes_PAD_instrucs(CMPR_bytes, Nrefreshes=13, r_min = 19, r_
     # Do CMPR data dump to pBufferPhoto
     A_min = max(r_min, 32 - Nwords)    # in case there's fewer than 18 words (72 bytes) in the file
     A = A_min
+    Nwords_left = Nwords
     for n, word in enumerate(words):
         PAD_instrucs += [f"lis r{A}, 0x{word[:4]}",
                          f"ori r{A}, r{A}, 0x{word[4:]}"]
@@ -738,10 +739,10 @@ def live_photo_dump_bytes_PAD_instrucs(CMPR_bytes, Nrefreshes=13, r_min = 19, r_
         if (n+1) % Nwords_per_refresh == 0:
             PAD_instrucs += [
                              f"li r10, {byte0}" ,
-                             f"stb r10, 0 ({r_base})" ,  # change 1st CMPR byte to trigger redraw
-                             f'mr r31, r{r_save}' ,        # restore r31 for vanilla code
-                             "b -> 0x80006460" ,    # resume vanilla code to advance a frame
-                             'NOPS' ,               # trigger a new controller loop
+                             f"stb r10, 0 ({r_base})" , # change 1st CMPR byte to trigger redraw
+                             f'mr r31, r{r_save}' ,     # restore r31 for vanilla code
+                             "b -> 0x80006460" ,        # resume vanilla code to advance a frame
+                             'NOPS' ,                   # trigger a new controller loop
                              'WAIT'
                             ]
             byte0 ^= 8  # flip lowest red bit of first CMPR byte so a photo redraw gets triggered
@@ -751,7 +752,11 @@ def live_photo_dump_bytes_PAD_instrucs(CMPR_bytes, Nrefreshes=13, r_min = 19, r_
     if Nwords_left != 0:
         raise ValueError("Error in register indexing")
     
-    PAD_instrucs += ["b -> 0x80006460"]
+    PAD_instrucs += [
+                    f"li r10, {byte0}" ,
+                    f"stb r10, 0 ({r_base})" ,  # change 1st CMPR byte to trigger redraw
+                    f'mr r31, r{r_save}' ,        # restore r31 for vanilla code
+                    "b -> 0x80006460"]    # resume vanilla code to advance a frame
     return PAD_instrucs
 
 # Create csv for CMPR data dump, staggered to only do so many bytes at time for live image update
@@ -800,19 +805,13 @@ def create_csv_for_photo_dump(CMPR_bytes, csvfile, Nrefreshes=13, r_min = 19, r_
         # for j in range(1,3):
         #     f.write(f"0x{PADs[j]:08X}, {nop}\n")
         # f.write(branch) #BLEH
-#######################################################################################
-# Convert a png to a csv that makes it a pictograph in game 3 (7904 bytes)
-#######################################################################################
-# def png_to_csv(png_file, csv_file='photo.csv', r_min=17, r_addr=16, ks=None):
-#     cmpr_file = picto.image_to_CMPR(png_file, out_file="photo.cmpr", width=152, height=104, resize_if_needed=True)
-    
-#     ppBuffer = 0x803F68CC
-#     PAD_instrucs = []
 
-#     PAD_instrucs += [f'lis {r_addr}, 0x803F',
-#                      f'lwz {r_addr}, 0x68CC ({r_addr})',  
-#                      f'']
-#     #create_csv_for_file_dump(ppBuffer**, cmpr_file, csv_file, r_min = r_min, r_addr = r_addr, ks=ks)
+#######################################################################################
+# Convert a png to a csv that uploads it into buffer pictograph data (7904 bytes)
+#######################################################################################
+def png_to_csv(png_file, csv_file, Nrefreshes=247, r_min=19, r_addr=18, r_base=17, r_save=16, ks=None):
+    cmpr_data = picto.image_to_CMPR(png_file, out_file=None, width=152, height=104, resize_if_needed=True)
+    create_csv_for_photo_dump(cmpr_data, csv_file, Nrefreshes=Nrefreshes, r_min=r_min, r_addr=r_addr, r_base=r_base, r_save=r_save, ks=ks)
 
 
 #######################################################################################

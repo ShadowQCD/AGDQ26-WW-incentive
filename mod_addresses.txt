@@ -11,11 +11,13 @@ hboots_manager_v2.0:        803312B0 - 80331310 (0x60)
 SpawnGShip_v1.3:            80331350 - 80331470 (0x120)
 SwordDamageZero_v1.0:       803314A0 - 803314FC (0x5C)
 big_bombs_v1.3.1:           80331520 - 80331594 (0x74)
+WaterBootsSpped_v1.3:       803315BC - 8033160C (0x50)
 
 
+hboots_water.bdl size:      (0x13660)
+Vboot_water.arc size:       (0x22480)
 
-hboots_water.bdl:           (0x13660)
-Vboot_water.arc:            (0x22480)
+hboots_Toad.bdl size:       (0x)
 
 p_hbootsData stored at      803F0F28
 p_hbootsModelData stored at 803F0F2C

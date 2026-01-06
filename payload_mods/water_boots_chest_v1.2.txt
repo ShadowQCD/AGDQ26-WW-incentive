@@ -40,3 +40,7 @@
 80330FC0:   blr
 
 
+#####################################################################################
+# Change the iron boots item icon to the in-game water boots icon (Japanese text)
+8038487B:   FF
+

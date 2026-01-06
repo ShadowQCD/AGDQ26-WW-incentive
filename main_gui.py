@@ -43,14 +43,15 @@ phase_2_csv_path    = csv_folder / phase_2_csv_file
 phase_3_csv_path    = csv_folder / phase_3_csv_file
 photo_csv_path      = csv_folder / photo_csv_file
 
-res_tuples = [  ('Game', res_folder/"hboots_water.bdl", 0x803f0f28) ,
+# Resources to include as options in phase 2.5
+res_tuples = [  ('Game', res_folder/"hboots_water.bdl", 0x803f0f28) ,   # for hboots.bdl files, tuple is (heapName, file, ppData); always use ppData=0x803F0F28
                 #('Game', res_folder/"hboots_vanilla.bdl", 0x803f0f28) ,
                 #('Game', res_folder/"hboots_Toad.bdl", 0x803f0f28) ,
-                #(0x80332000, res_folder/"hboots_Toad.bdl") ,
-                #(0x803318C0, res_folder/"iron_boots"/"JKRMemArchive.bin") ,
-                #(0x80331940, res_folder/"iron_boots"/"Vboot.rarc") ,
              ]
 
+# Set number of times to refresh/redraw while uploading buffer photo
+Nrefreshes      = 247   # must be a factor of 1,976 = 13*19*8
+photo_rmin      = 19    # must be in [19,30]; lower is faster for writing data but 
 
 # Set number of times to perform each DME write in each phase
 phase_m1_Nreps  = 3     # should only need to be 1
@@ -58,7 +59,7 @@ phase_1_Nreps   = 10    # each DME write in phase 1 has a ~20% chance to occur w
 phase_2_Nreps   = 3     # should only need to be 1, but have been experiencing weird issues
 phase_25_Nreps  = 3     # this is where the real issues have been, maybe stmw timing issues
 phase_3_Nreps   = 3     # should only need to be 1
-photo_Nreps     = 3     # should only need to be 1
+photo_Nreps     = 1     # should only need to be 1
 
 # GUI color scheme
 BG = "#2e2e2e"
@@ -205,12 +206,12 @@ def rebuild_resource_csv_files():
         f = tup[1]
         csv_filename = f.stem + ".csv"
         csv_path = csv_folder / csv_filename
-        if f.suffix == '.png':
-            #addr = tup[0]
-            cmpr_data = picto.image_to_CMPR(f, out_file=None, width=152, height=104, resize_if_needed=True)
-            HF.create_csv_for_photo_dump(cmpr_data, csv_path, Nrefreshes=13, r_min = 19, r_addr = 18, r_base = 17, r_save=16, ks=ks)
-            #HF.create_csv_for_file_dump(addr, cmpr_data, csv_path, r_min = 17, r_addr = 16, ks=None)
-        elif isinstance(tup[0], str):
+        # if f.suffix == '.png':
+        #     #addr = tup[0]
+        #     cmpr_data = picto.image_to_CMPR(f, out_file=None, width=152, height=104, resize_if_needed=True)
+        #     HF.create_csv_for_photo_dump(cmpr_data, csv_path, Nrefreshes=13, r_min = 19, r_addr = 18, r_base = 17, r_save=16, ks=ks)
+        #     #HF.create_csv_for_file_dump(addr, cmpr_data, csv_path, r_min = 17, r_addr = 16, ks=None)
+        if isinstance(tup[0], str):
             heapName = tup[0]
             ppData = tup[2]
             if 'hboots' in f.stem:
@@ -234,11 +235,12 @@ def rebuild_photo_csv_files():
         log("No photos selected for regeneration.")
         return
 
-    for f in selected_photos:
-        csv_filename = f.stem + ".csv"
+    for png_file in selected_photos:
+        csv_filename = png_file.stem + ".csv"
         csv_path = csv_folder / csv_filename
-        cmpr_data = picto.image_to_CMPR(f, out_file=None, width=152, height=104, resize_if_needed=True)
-        HF.create_csv_for_photo_dump(cmpr_data, csv_path, r_min = 30, r_addr = 17, r_base = 16, ks=ks)
+        # cmpr_data = picto.image_to_CMPR(png_file, out_file=None, width=152, height=104, resize_if_needed=True)
+        # HF.create_csv_for_photo_dump(cmpr_data, csv_path, Nrefreshes=Nrefreshes, r_min=photo_rmin, r_addr=18, r_base=17, r_save=16, ks=ks)
+        HF.png_to_csv(png_file, csv_path, Nrefreshes=Nrefreshes, r_min=photo_rmin, r_addr=18, r_base=17, r_save=16, ks=ks)
         log(f"{csv_filename} regenerated.")
     log(' ')
 
@@ -254,15 +256,6 @@ def rebuild_photo_csv_files():
 ######################################################################################################
 def run_phase_m1():
     log(f"Running Phase -1... (Nreps={phase_m1_Nreps})")
-    # # nop out controller 2-4 button/left stick data (will be different if using unplug strats; need to test)
-    # for n in range(3):
-    #     button_addr = 0x803F0F38 + n*0x08
-    #     my_DME_write(button_addr, button_nop)
-
-    # my_DME_write(PAD2_addr, nop)       # clear pad 2 C/LR data
-    # my_DME_write(PAD3_addr, icbi_r12)  # invalidate instruction cache at r12=0x803F0F3C so that the CPU sees updates to pad 2 C/LR data
-    # my_DME_write(PAD4_addr, b_42)      # branch from pad 4 -> pad 2; main loop for phase 1
-    
     my_DME_writes_from_csv(phase_m1_csv_path, Nreps=phase_m1_Nreps)
     log("Phase -1 complete.\n")
 
@@ -282,10 +275,6 @@ def run_phase_1():
     log(f"Running Phase 1... (Nreps={phase_1_Nreps})")
     my_DME_writes_from_csv(phase_1_csv_path, Nreps=phase_1_Nreps)
     log("Phase 1 complete.\n")
-    
-    # my_DME_write(0x8039D778, 0x802D5820)
-    # my_DME_write(0x803F0F4C, HF.get_ASM_encoding('bl -> 0x802D5820', addr=0x803F0F4C, ks=ks))
-    
 
 ##################################################################
 # PHASE 2: Write main payload using pads 1-4 and resume gameplay
@@ -328,7 +317,7 @@ def nop_controllers():
     log("nops complete.\n")
 
 #################################################################################################
-# UPLOAD PHOTO: Must be done while a photo is in the buffer (right after taking snapshot in game)
+# UPLOAD PHOTO: Must be done while a photo is in the buffer (right after taking pictograph in game)
 #################################################################################################
 def upload_photo():
     selected_photos = [f for f,v in photo_vars.items() if v.get() == 1]
