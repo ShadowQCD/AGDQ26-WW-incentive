@@ -22,6 +22,7 @@ g_map_01_custom.blo:        80335000 - 80336740 (0x1740)
 g_gaikotsu.bti:             80336800 - 80336D20 (0x520)
 g_batsu.bti:                80336E00 - 80337020 (0x220)
 
+
 p_hbootsData stored at      803F0F28
 p_hbootsModelData stored at 803F0F2C
 
