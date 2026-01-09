@@ -13,11 +13,25 @@ SwordDamageZero_v1.0:       803314A0 - 803314FC (0x5C)
 big_bombs_v1.3.1:           80331520 - 80331594 (0x74)
 WaterBootsSpped_v1.3:       803315BC - 8033160C (0x50)
 
+gsc_manager_v1.0:           80331A00 - ???
 
-hboots_water.bdl size:      (0x13660)
-Vboot_water.arc size:       (0x22480)
+FinalPhotoManager_v1.0:     80332000 - 80332094 (0x94)
 
-hboots_Toad.bdl size:       (0x)
+
+g_map_01_custom.blo:        80335000 - 80336740 (0x1740)
+g_gaikotsu.bti:             80336800 - 80336D20 (0x520)
+g_batsu.bti:                80336E00 - 80337020 (0x220)
 
 p_hbootsData stored at      803F0F28
 p_hbootsModelData stored at 803F0F2C
+
+hboots_water.bdl size:      (0x13660)
+Vboot_water.rarc size:      (0x22480)
+
+hboots_Toad.bdl size:       (0x)
+
+
+# p_gscData stored at         803F0F18
+# p_gscJKRArchive stored at   803F0F1C
+
+

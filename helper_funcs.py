@@ -279,7 +279,11 @@ def get_addr_value_pairs_from_files(file_list, output_type='hex', ks=None):
                     line = line.split(sym, 1)[0].strip()    # remove comments & whitespace
                 if not line:
                     continue
-                addr_str, value_str = line.replace(':','').split(None,1)
+                
+                try:
+                    addr_str, value_str = line.replace(':','').split(None,1)
+                except:
+                    raise ValueError(f"{file}, {line}")
 
                 # Check whether value_str is ASM or hex
                 #input_type = get_value_type(addr_str, value_str)
@@ -562,6 +566,7 @@ def create_csv_for_file_dump(addr_target, binfile, csvfile, r_min = 14, r_addr =
             PAD_word = get_ASM_encoding(PAD_instruc, addr=PAD_addr, ks=ks, output_type='hex')
             f.write(f"0x{PAD_addr:08X}, 0x{PAD_word}\n")
             #print(f"0x{PAD_addr:08X}, {PAD_instruc}")
+
 
 ####################################################################################################
 # Allocate memory for data in a specified heap, then dump hboots data from .bdl file to that memory

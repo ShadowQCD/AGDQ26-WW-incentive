@@ -114,7 +114,11 @@
 80E0E4BC:   20426F6F
 80E0E4C0:   74730000
 #############################################################################
-# Iron Boots menu item description:
+# Iron/Water Boots menu item description: (need to find address)
+# Set these magical boots to a button and
+# press it to wear them. Press the button
+# again to remove them. With these on, you
+# can run on water without fear of sinking.
 
 #############################################################################
 # KoRL OOB Text:

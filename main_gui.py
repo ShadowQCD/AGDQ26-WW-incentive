@@ -46,8 +46,11 @@ phase_3_csv_path    = csv_folder / phase_3_csv_file
 photo_csv_path      = csv_folder / photo_csv_file
 
 # Resources to include as options in phase 2.5
-res_tuples = [  ('Game', res_folder/"hboots_water.bdl", 0x803f0f28) ,   # for hboots.bdl files, tuple is (heapName, file, ppData); always use ppData=0x803F0F28
-                #('Game', res_folder/"hboots_vanilla.bdl", 0x803f0f28) ,
+res_tuples = [  
+                (0x80335000, res_folder/"g_map_01_custom.blo") ,
+                (0x80336800, res_folder/"g_gaikotsu.bti") ,
+                (0x80336E00, res_folder/"g_batsu.bti") ,
+                ('Game', res_folder/"hboots_water.bdl", 0x803F0F28) ,   # for hboots.bdl files, tuple is (heapName, file, ppData); always use ppData=0x803F0F28
                 #('Game', res_folder/"hboots_Toad.bdl", 0x803f0f28) ,
              ]
 
@@ -299,6 +302,7 @@ def run_phase_25():
         csv_filename = f.stem + ".csv"
         csv_path = csv_folder / csv_filename
         my_DME_writes_from_csv(csv_path, Nreps=phase_25_Nreps)
+        sleep(.1)
     log("Phase 2.5 complete.\n")
 
 

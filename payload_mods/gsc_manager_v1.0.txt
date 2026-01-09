@@ -1,0 +1,116 @@
+#####################################################################################
+# Hot swap Ghost Ship Chart files to add beta features
+#####################################################################################
+
+# Put injection hook in J2DScreen::set(J2DScreen *this, char *pNam, JKRArchive *pJKRArchive)
+802D0968:   bl -> 0x80331A00        # bl -> 0x802B68F0: JKRFileLoader::getGlbResource(char *pNam, JKRFileLoader *pLoader)
+
+###########################
+
+# Check if resName is 'g_map_01.blo'
+80331A00:   lwz r20, 0 (r3)
+80331A04:   lis r21, 0x675F
+80331A08:   ori r21, r21, 0x6D61
+80331A0C:   cmpw r20, r21
+80331A10:   bne -> 0x80331A50
+
+80331A14:   lwz r20, 4 (r3)
+80331A18:   lis r21, 0x705F
+80331A1C:   ori r21, r21, 0x3031
+80331A20:   cmpw r20, r21
+80331A24:   bne -> 0x80331A50
+
+80331A28:   lwz r20, 8 (r3)
+80331A2C:   lis r21, 0x2E62
+80331A30:   ori r21, r21, 0x6C6F
+80331A34:   cmpw r20, r21
+80331A38:   bne -> 0x80331A50
+
+###########################
+
+# 'Return' r3 = pInjectedBLO = 0x80335000
+80331A3C:   lis r3, 0x8033
+80331A40:   ori r3, r3, 0x5000
+
+# Also replace the result of the 'getExpendedResSize' call a few lines later and branch back in
+80331A44:   mr r31, r3
+80331A48:   li r3, 0x1740
+80331A4C:   b -> 0x802D098C
+
+###########################
+
+# If not 'g_map_01.blo', do vanilla call to JKRFileLoader::getGlbResource(char *pNam, JKRFileLoader *pLoader)
+80331A50:   b -> 0x802B68F0
+
+
+#####################################################################################
+# Hot swap injected BTI files
+#####################################################################################
+
+# Put injection hook in JUTResReference::getResource(JUTResReference *this, ulong resType, JKRArchive *pJKRArchive)
+802C13CC:   bl -> 0x80331B00        # replaces bl -> 0x802B82D0: JKRArchive::getGlbResource(resType, pName, pJKRArchive)
+
+###########################
+
+# Check if resName is 'g_gaikotsu.bti'
+80331B00:   lwz r20, 0 (r4)
+80331B04:   lis r21, 0x675F
+80331B08:   ori r21, r21, 0x6761
+80331B0C:   cmpw r20, r21
+80331B10:   bne -> 0x80331B58
+
+80331B14:   lwz r20, 4 (r4)
+80331B18:   lis r21, 0x696B
+80331B1C:   ori r21, r21, 0x6F74
+80331B20:   cmpw r20, r21
+80331B24:   bne -> 0x80331B98
+
+80331B28:   lwz r20, 8 (r4)
+80331B2C:   lis r21, 0x7375
+80331B30:   ori r21, r21, 0x2E62
+80331B34:   cmpw r20, r21
+80331B38:   bne -> 0x80331B98
+
+80331B3C:   lhz r20, 0xC (r4)
+80331B40:   cmpwi r20, 0x7469
+80331B44:   bne -> 0x80331B98
+
+###########################
+
+# Return r3 = pInjectedGaikotsu = 0x80336800
+80331B48:   lis r3, 0x8033
+80331B4C:   ori r3, r3, 0x6800
+80331B50:   blr
+
+80331B54:   nop
+
+###########################
+
+# Check if resName is 'g_batsu.bti'
+80331B58:   lwz r20, 0 (r4)
+80331B5C:   lis r21, 0x675F
+80331B60:   ori r21, r21, 0x6261
+80331B64:   cmpw r20, r21
+80331B68:   bne -> 0x80331B98
+
+80331B6C:   lwz r20, 4 (r4)
+80331B70:   lis r21, 0x7473
+80331B74:   ori r21, r21, 0x752E
+80331B78:   cmpw r20, r21
+80331B7C:   bne -> 0x80331B98
+
+80331B80:   lhz r20, 8 (r4)
+80331B84:   cmpwi r20, 0x6274
+80331B88:   bne -> 0x80331B98
+
+###########################
+
+# Return r3 = pInjectedBatsu = 0x80336E00
+80331B8C:   lis r3, 0x8033
+80331B90:   ori r3, r3, 0x6E00
+80331B94:   blr
+
+###########################
+
+# If not 'g_gaikotsu.bti' or 'g_batsu.bti', do vanilla call to JKRArchive::getGlbResource(ulong resType, char *pResName, JKRArchive *pArchive)
+80331B98:   b -> 0x802B82D0
