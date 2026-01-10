@@ -108,7 +108,7 @@ def my_DME_writes_from_csv(csv_path, Nreps=1):
         full_log = False # (Nwords < 100)
         t0 = time()
         for n, line in enumerate(lines):
-            # if n == 42:
+            # if n == 1:
             #     break
             if line[:4] == 'WAIT':
                 sleep(0.034)
@@ -246,6 +246,7 @@ def rebuild_photo_csv_files():
         # cmpr_data = picto.image_to_CMPR(png_file, out_file=None, width=152, height=104, resize_if_needed=True)
         # HF.create_csv_for_photo_dump(cmpr_data, csv_path, Nrefreshes=Nrefreshes, r_min=photo_rmin, r_addr=18, r_base=17, r_save=16, ks=ks)
         HF.png_to_csv(png_file, csv_path, Nrefreshes=Nrefreshes, r_min=photo_rmin, r_addr=18, r_base=17, r_save=16, ks=ks)
+        #HF.png_to_csv_slow(png_file, csv_path, Nrefreshes=Nrefreshes, r_word=photo_rmin, r_addr=18, r_base=17, ks=ks)
         log(f"{csv_filename} regenerated.")
     log(' ')
 

@@ -812,12 +812,149 @@ def create_csv_for_photo_dump(CMPR_bytes, csvfile, Nrefreshes=13, r_min = 19, r_
         # f.write(branch) #BLEH
 
 #######################################################################################
+# Convert a png to a csv that makes it a pictograph in game (7904 bytes)
+#######################################################################################
+def live_photo_dump_bytes_PAD_instrucs_slow(CMPR_bytes, Nrefreshes=247, r_word=19, r_addr=18, r_base=17):
+    Nbytes = len(CMPR_bytes)
+    if Nbytes % 4 != 0:
+        raise ValueError("WARNING: Can't dump fractional number of words, should edit function")
+    words = [CMPR_bytes[i:i+4].hex().upper() for i in range(0, len(CMPR_bytes), 4)]
+    Nwords = len(words)
+
+    Nwords_per_refresh = 1976 // Nrefreshes
+    if Nrefreshes * Nwords_per_refresh != 1976:
+        raise ValueError("Nrefreshes needs to be a factor of 1,976=13*19*8")
+    
+    #byte0 = CMPR_bytes[0] ^ 8   # flip lowest red bit of 1st CMPR byte after each draw update
+    #byte0 = CMPR_bytes[0]
+    #bytes0 = 0x7000
+    hex0 = 'F000'
+    hex1 = '000F'
+    hex2 = '80AB' 
+    hex3 = 'BDFF'
+    #print(CMPR_bytes[:8])
+    
+    PAD_instrucs = []
+    
+    # Initiate controller 2-4 loop
+    PAD_instrucs += ['NOPS',
+                     'WAIT']
+    
+
+    # Set r_addr = r_base = pBufferPhoto (load from ppBufferPhoto = 0x803F68CC)
+    PAD_instrucs += [f'lis {r_base}, 0x803F' ,
+                     f'lwz {r_base}, 0x68CC ({r_base})' ,
+                     f'mr {r_addr}, {r_base}' ]
+                     #f'addi {r_addr}, {r_base}, -4']
+
+    # Do CMPR data dump to pBufferPhoto
+    for n, word in enumerate(words):
+        PAD_instrucs += [f"lis {r_word}, 0x{word[:4]}",
+                         f"ori {r_word}, {r_word}, 0x{word[4:]}",
+                         # f"stwu {r_word}, 4 ({r_addr})" ,
+                         f"stw {r_word}, 0 ({r_addr})",
+                         f"addi {r_addr}, {r_addr}, 4",
+                         #  'nop', 'nop'
+                         ]
+        
+        if (n+1) % Nwords_per_refresh == 0:
+            PAD_instrucs += [
+                            f"lis r10, 0x{hex0}" ,
+                            f"ori r10, r10, 0x{hex1}" ,
+                            f"stw r10, 0 ({r_base})" ,
+                            f"lis r10, 0x{hex2}" ,
+                            f"ori r10, r10, 0x{hex3}" ,
+                            f"stw r10, 4 ({r_base})" ,
+                            #  f"li r10, {bytes0}" ,
+                            #  f"sth r10, 0 ({r_base})" ,
+                             #f"li r10, {byte0}" ,
+                             #f"stb r10, 0 ({r_base})" , # change 1st CMPR byte to trigger redraw
+                             "b -> 0x80006460" ,        # resume vanilla code to advance a frame
+                             'NOPS' ,                   # trigger a new controller loop
+                             'WAIT'
+                            ]
+            if hex0 == 'F000':
+                hex0 = '8765'
+                hex1 = '1234'
+                hex2 = 'BDFF' 
+                hex3 = '80AB'
+            else:
+                hex0 = 'F000'
+                hex1 = '000F'
+                hex2 = '80AB' 
+                hex3 = 'BDFF'
+            
+            # if bytes0 == 0x7000:
+            #     bytes0 = 0x300F
+            # else:
+            #     bytes0 = 0x7000
+
+            # if byte0 == CMPR_bytes[0]:
+            #     byte0 = 0xF0
+            # else:
+            #     byte0 = CMPR_bytes[0]
+            #byte0 ^= 8  # flip lowest red bit of first CMPR byte so a photo redraw gets triggered
+    
+    PAD_instrucs += [
+                    f"lis r10, 0x{hex0}" ,
+                    f"ori r10, r10, 0x{hex1}" ,
+                    f"stw r10, 0 ({r_base})" ,
+                    f"lis r10, 0x{hex2}" ,
+                    f"ori r10, r10, 0x{hex3}" ,
+                    f"stw r10, 4 ({r_base})" ,
+                    # f"li r10, {bytes0}" ,
+                    # f"sth r10, 0 ({r_base})" ,
+                    # f"li r10, {byte0}" ,
+                    # f"stb r10, 0 ({r_base})" ,  # change 1st CMPR byte to trigger redraw
+                    "b -> 0x80006460"]          # resume vanilla code to advance a frame
+    return PAD_instrucs
+
+# Create csv for CMPR data dump, staggered to only do so many bytes at time for live image update
+def create_csv_for_photo_dump_slow(CMPR_bytes, csvfile, Nrefreshes=247, r_word=19, r_addr = 18, r_base = 17, ks=None):
+    # with open(CMPRfile, 'rb') as f:
+    #     CMPR_bytes = f.read()
+    
+    PAD_instrucs = live_photo_dump_bytes_PAD_instrucs_slow(CMPR_bytes, Nrefreshes=Nrefreshes, r_word=r_word, r_addr=r_addr, r_base=r_base)
+    PADs = [0x803F0F34 + 8*n for n in range(4)]
+    nop = "0x60000000"
+    #branch = "0x803F0F4C, 0x4BC15514\n"   # b -> 0x80006460 to do a frame update
+    with open(csvfile,'w') as f:
+        n = 1
+        for PAD_instruc in PAD_instrucs:
+            if PAD_instruc[:4] == 'b ->':  
+                for j in range(n,3):
+                    f.write(f"0x{PADs[j]:08X}, {nop}\n")
+                PAD_addr = PADs[3]
+                PAD_word = get_ASM_encoding(PAD_instruc, addr=PAD_addr, ks=ks, output_type='hex')
+                f.write(f"0x{PAD_addr:08X}, 0x{PAD_word}\n")   # b -> 0x80006460 to do a frame update
+                n = 1
+            elif PAD_instruc == 'NOPS':
+                for j in range(1,4):
+                    f.write(f"0x{PADs[j]:08X}, {nop}\n")
+                n = 1
+            elif PAD_instruc == 'WAIT':    
+                f.write('WAIT A FRAME\n')
+                n = 1
+            else:
+                PAD_addr = PADs[n]
+                n = max(1, (n+1)%4)
+                PAD_word = get_ASM_encoding(PAD_instruc, addr=PAD_addr, ks=ks, output_type='hex')
+                f.write(f"0x{PAD_addr:08X}, 0x{PAD_word}\n")
+                #print(f"0x{PAD_addr:08X}, {PAD_instruc}")
+        # for j in range(1,3):
+        #     f.write(f"0x{PADs[j]:08X}, {nop}\n")
+        # f.write(branch) #BLEH
+
+#######################################################################################
 # Convert a png to a csv that uploads it into buffer pictograph data (7904 bytes)
 #######################################################################################
+def png_to_csv_slow(png_file, csv_file, Nrefreshes=247, r_word=19, r_addr=18, r_base=17, ks=None):
+    cmpr_data = picto.image_to_CMPR(png_file, out_file=None, width=152, height=104, resize_if_needed=True)
+    create_csv_for_photo_dump_slow(cmpr_data, csv_file, Nrefreshes=Nrefreshes, r_word=r_word, r_addr=r_addr, r_base=r_base, ks=ks)
+
 def png_to_csv(png_file, csv_file, Nrefreshes=247, r_min=19, r_addr=18, r_base=17, r_save=16, ks=None):
     cmpr_data = picto.image_to_CMPR(png_file, out_file=None, width=152, height=104, resize_if_needed=True)
     create_csv_for_photo_dump(cmpr_data, csv_file, Nrefreshes=Nrefreshes, r_min=r_min, r_addr=r_addr, r_base=r_base, r_save=r_save, ks=ks)
-
 
 #######################################################################################
 # Automatically format addresses in mod files so we don't need to set them manually 

@@ -114,3 +114,8 @@
 
 # If not 'g_gaikotsu.bti' or 'g_batsu.bti', do vanilla call to JKRArchive::getGlbResource(ulong resType, char *pResName, JKRArchive *pArchive)
 80331B98:   b -> 0x802B82D0
+
+
+
+
+

@@ -1,0 +1,57 @@
+#############################################################################
+# Give Link all items/upgrades
+#############################################################################
+# 803C4C08:   00500050 # FFFFFFFF    # max HP (way overdone; normal is 00500050)
+# 803C4C0C:   270F        # 9,999 rupees (5,000 = 0x1388)
+
+# Major items
+803C4C16:   3E3C        # sword & shield
+803C4C18:   28          # power bracelets
+803C4C1A:   02          # large wallet
+803C4C1B:   20          # max magic meter
+803C4C1C:   20          # current magic meter
+
+# All inventory slots
+803C4C44:   20782225    
+803C4C48:   242D3421
+803C4C4C:   23FF2A2C    # no boots (26292A2C for iron boots)
+803C4C50:   36FF5558    # no bombs (36315558 for bombs)
+803C4C54:   5050302F
+803C4C58:   33
+
+# Arrow/bomb amounts (99 = 0x63)
+803C4C71:   63      # current arrow count
+803C4C72:   63      # current bomb count
+
+803C4C77:   63      # max arrow count
+803C4C78:   63      # max bomb count
+
+# Own all items
+803C4CBC:   0F030103
+803C4CC0:   03
+803C4CC5:   3F          # all songs
+# 803C4CC6:   FF          # full triforce
+803C4CC7:   06          # Din's & Farore's pearls (not Nayru's so we can still do endless night)
+
+# Sea Chart all sectors mapped
+803C4D0C:   03030303
+803C4D10:   03030303
+803C4D14:   03030303
+803C4D18:   03030303
+803C4D1C:   03030303
+803C4D20:   03030303
+803C4D24:   03030303
+803C4D28:   03030303
+803C4D2C:   03030303
+803C4D30:   03030303
+803C4D34:   03030303
+803C4D38:   03030303
+803C4D3C:   03
+
+803C5235:   0A          # own sea chart (requires bit 0x08; 0x02 is WW cutscene)
+
+# Max rupees & HP
+803CA768:   1388    # 5,000 rupees (9,999 gets overwritten if you collect any)
+803CA77E:   0044    # increase HP to max (20 hearts)
+# 803CA780:   0020    # max magic (current)
+# 803CA784:   0020    # max magic (meter)

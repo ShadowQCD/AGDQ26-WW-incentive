@@ -1,7 +1,7 @@
 #############################################################################
 # Modify Texts
 #############################################################################
-# To highlight text:
+# To highlight orange red text:
 # before 1A06FF000001 1A06FF000000 after
 
 # To line break: 0x0A
@@ -108,11 +108,9 @@
 80E06DAC: 2E2E2E00
 
 #############################################################################
-# Iron Boots Menu Text  (Water Boots)
-80E0E4B4:   74730057
-80E0E4B8:   61746572
-80E0E4BC:   20426F6F
-80E0E4C0:   74730000
+# Iron Boots Menu Text  (???)
+80E0E4B4:   7473003F
+80E0E4B8:   3F3F0000
 #############################################################################
 # Iron/Water Boots menu item description: (need to find address)
 # Set these magical boots to a button and
@@ -233,64 +231,102 @@
 
 
 #############################################################################
-# DX Picto/CAMERA2 Get Text (IRL picto)
-# You got a Strange PictoBox!
+# Legendary Pictograph Get Text (IRL picto)
+
+# You got a [Green]Strange PictoBox!
 # Despite its normal appearance, it has
 # a mysterious aura unlike anything
 # you've encountered.
-# Almost like it's from another world...
-80E086FC:   596f7520
-80E08700:   676f7420
-80E08704:   61201a06
-80E08708:   ff000001
-80E0870C:   53747261
-80E08710:   6e676520
-80E08714:   50696374
-80E08718:   6f20426f
-80E0871C:   781a06ff
-80E08720:   00000021
-80E08724:   0a446573
-80E08728:   70697465
-80E0872C:   20697473
-80E08730:   206e6f72
-80E08734:   6d616c20
-80E08738:   61707065
-80E0873C:   6172616e
-80E08740:   63652c20
-80E08744:   69742068
-80E08748:   61730a61
-80E0874C:   206d7973
-80E08750:   74657269
-80E08754:   6f757320
-80E08758:   61757261
-80E0875C:   20756e6c
-80E08760:   696b6520
-80E08764:   616e7974
-80E08768:   68696e67
-80E0876C:   0a796f75
-80E08770:   27766520
-80E08774:   656e636f
-80E08778:   756e7465
-80E0877C:   7265642e
-80E08780:   0a0a416c
-80E08784:   6d6f7374
-80E08788:   206c696b
-80E0878C:   65206974
-80E08790:   27732066
-80E08794:   726f6d20
-80E08798:   616e6f74
-80E0879C:   68657220
-80E087A0:   776f726c
-80E087A4:   642e2e2e
-80E087A8:   00
+# Almost like it's from [Red]Another World...
+
+# But it doesn’t seem to work…? Any [Blue]donations? [Pink]Hello Chat! [Yellow]:D
+
+# To highlight bright blue text:
+# before 1A06FF000005 1A06FF000000 after
+
+80E78B30:   596f7520
+80E78B34:   676f7420
+80E78B38:   61201a06
+80E78B3C:   ff000002
+80E78B40:   53747261
+80E78B44:   6e676520
+80E78B48:   50696374
+80E78B4C:   6f20426f
+80E78B50:   781a06ff
+80E78B54:   00000021
+80E78B58:   0a446573
+80E78B5C:   70697465
+80E78B60:   20697473
+80E78B64:   206e6f72
+80E78B68:   6d616c20
+80E78B6C:   61707065
+80E78B70:   6172616e
+80E78B74:   63652c20
+80E78B78:   69742068
+80E78B7C:   61730a61
+80E78B80:   206d7973
+80E78B84:   74657269
+80E78B88:   6f757320
+80E78B8C:   61757261
+80E78B90:   20756e6c
+80E78B94:   696b6520
+80E78B98:   616e7974
+80E78B9C:   68696e67
+80E78BA0:   0a796f75
+80E78BA4:   27766520
+80E78BA8:   656e636f
+80E78BAC:   756e7465
+80E78BB0:   7265642e
+80E78BB4:   0a0a416c
+80E78BB8:   6d6f7374
+80E78BBC:   206c696b
+80E78BC0:   65206974
+80E78BC4:   27732066
+80E78BC8:   726f6d20
+80E78BCC:   1a06ff00
+80E78BD0:   0001416e
+80E78BD4:   6f746865
+80E78BD8:   7220576f
+80E78BDC:   726c641a
+80E78BE0:   06ff0000
+80E78BE4:   002e0a42
+80E78BE8:   75742069
+80E78BEC:   7420646f
+80E78BF0:   65736e27
+80E78BF4:   74207365
+80E78BF8:   656d2074
+80E78BFC:   6f20776f
+80E78C00:   726b2e2e
+80E78C04:   2e0a416e
+80E78C08:   79201a06
+80E78C0C:   ff000005
+80E78C10:   446f6e61
+80E78C14:   74696f6e
+80E78C18:   731a06ff
+80E78C1C:   0000003f
+80E78C20:   201a06ff
+80E78C24:   00000648
+80E78C28:   656c6c6f
+80E78C2C:   20436861
+80E78C30:   74211a06
+80E78C34:   ff000000
+80E78C38:   201a06ff
+80E78C3C:   0000043a
+80E78C40:   44007570
 
 
 # d_item::item_func_salvage_item1 (Legendary Picto)
-# Remove Endless Night, Despawn Ghost Ships
+# Remove Endless Night, Despawn Ghost Ships, Set Daytime (mNextTime), Give Camera2
 
 800C4B98: lis   r25, 0x803C
 800C4B9C: li    r26, 0x9C
 800C4BA0: stb   r26, 0x5236(r25)
 800C4BA4: li    r26, 0x03
 800C4BA8: stb   r26, 0x52B4(r25)
-800C4BAC: blr
+800C4BAC: lis   r25, 0x803E
+800C4BB0: li    r26, 0x4334
+800C4BB4: sth   r26, 0x56F0(r25)
+800C4BB8: lis   r25, 0x803C
+800C4BBC: li    r26, 0x26
+800C4BC0: stb   r26, 0x4C4C(r25)
+800C4BC4: blr

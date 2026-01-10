@@ -1,0 +1,39 @@
+#############################################################################
+# Always Snowing and Fast Wind Outside FF2
+#############################################################################
+
+# Put injection hook in d_a_player_main::daPy_lk_c::setRoomInfo
+
+8011EF90:   b ->   0x80331110           
+
+#############################################################################
+# Always Snowing
+
+# Check Stage Info ID (Sea, Test Maps)
+
+80331110:   lis     r21, 0x803C
+80331114:   lbz     r22, 0x53A4(r21)
+80331118:   cmpwi   r22, 0x00
+8033111C:   beq ->  0x8033112C
+80331120:   cmpwi   r22, 0x0F
+80331124:   beq ->  0x8033112C
+80331128:   b ->    0x80331138
+8033112C:   lis     r21, 0x803E
+80331130:   li      r22, 0x20      
+80331134:   stb     r22, 0x5483(r21)
+
+# Check Current room number (00), Previous room number(01) 
+80331138:   lis     r21, 0x803F
+8033113C:   lbz     r22, 0x6A78(r21)
+80331140:   cmpwi   r22, 0x00
+80331144:   bne ->  0x8033116C
+80331148:   lis     r21, 0x803F                   
+8033114C:   lbz     r22, 0x6A79(r21)
+80331150:   cmpwi   r22, 0x01
+80331154:   bne ->  0x8033116C 
+80331158:   lis     r21, 0x803E
+8033115C:   li      r22, 0x407F             # Fast Wind
+80331160:   sth     r22, 0x544C(r21)        
+80331164:   li      r22, 0x20 
+80331168:   stb     r22, 0x545A(r21)
+8033116C:   blr
